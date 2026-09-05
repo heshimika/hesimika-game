@@ -141,6 +141,9 @@ const SPRITES = {
 // 512×512の透過PNGを、ゲーム内ではこの大きさで描画
 const HESI_W = 110, HESI_H = 110;
 const MIKA_W = 118, MIKA_H = 118;
+// 見た目だけ少し大きく（当たり判定・ゲームバランスは変更しない）
+const HESI_DRAW_W = 132, HESI_DRAW_H = 132;
+const MIKA_DRAW_W = 136, MIKA_DRAW_H = 136;
 
 // ===== アイテム =====
 const HEART = [
@@ -450,7 +453,15 @@ function render(){
   }
   if (mikaImg.complete && mikaImg.naturalWidth){
     const hop = smileT>16 ? -3 : 0;
-    ctx.drawImage(mikaImg, mx-MIKA_W/2, 10+mBob+hop, MIKA_W, MIKA_H);
+    // 元PNGはそのまま。表示だけ少し大きく＋軽く締める
+    const drawY = 10+mBob+hop-(MIKA_DRAW_H-MIKA_H); // 雲の下端位置は従来と同じ
+    ctx.save();
+    ctx.filter='saturate(1.10) contrast(1.07)';
+    ctx.shadowColor='rgba(8,12,28,.38)';
+    ctx.shadowBlur=7;
+    ctx.shadowOffsetY=3;
+    ctx.drawImage(mikaImg, mx-MIKA_DRAW_W/2, drawY, MIKA_DRAW_W, MIKA_DRAW_H);
+    ctx.restore();
   }
 
   // ふきだし(三日月のすぐ下に大きめ)
@@ -500,18 +511,22 @@ function render(){
 
   if (hesiImg.complete && hesiImg.naturalWidth){
     const hop = happyT>24 ? -3 : 0;
-    const drawY = STAND_Y-HESI_H+hop;
+    const drawY = STAND_Y-HESI_DRAW_H+hop; // 足元位置は従来と同じ
+    ctx.save();
+    ctx.filter='saturate(1.10) contrast(1.07)';
+    ctx.shadowColor='rgba(8,12,28,.42)';
+    ctx.shadowBlur=7;
+    ctx.shadowOffsetY=3;
     if (hesiFlip){
-      ctx.save();
       ctx.translate(hx, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(hesiImg, -HESI_W/2, drawY, HESI_W, HESI_H);
-      ctx.restore();
+      ctx.drawImage(hesiImg, -HESI_DRAW_W/2, drawY, HESI_DRAW_W, HESI_DRAW_H);
     } else {
-      ctx.drawImage(hesiImg, hx-HESI_W/2, drawY, HESI_W, HESI_H);
+      ctx.drawImage(hesiImg, hx-HESI_DRAW_W/2, drawY, HESI_DRAW_W, HESI_DRAW_H);
     }
+    ctx.restore();
   }
-  if (happyT>18){ ctx.font='14px sans-serif'; ctx.fillText('💗', hx+HESI_W/2-2, STAND_Y-HESI_H+2); }
+  if (happyT>18){ ctx.font='14px sans-serif'; ctx.fillText('💗', hx+HESI_DRAW_W/2-4, STAND_Y-HESI_DRAW_H+5); }
 
   // 長谷部のふきだし：通常は横／「主への手土産ができたな」は頭上
   if (hesiBubble){
@@ -523,7 +538,7 @@ function render(){
     if (hesiBubble.pos==='top'){
       // 大盤振る舞い前はアイテム停止中なので、頭上に大きく出す
       const bx=Math.min(W-w-6, Math.max(6, hx-w/2));
-      const by=STAND_Y-HESI_H-24;
+      const by=STAND_Y-HESI_DRAW_H-24;
       ctx.beginPath();
       ctx.moveTo(hx-6, by+22); ctx.lineTo(hx+6, by+22); ctx.lineTo(hx, by+29); ctx.closePath(); ctx.fill();
       ctx.beginPath(); ctx.roundRect(bx, by, w, 22, 9); ctx.fill();
@@ -537,7 +552,7 @@ function render(){
       const leftX=hx-41-gap-w;
       const onRight=(rightX+w<=W-6);
       const bx=onRight ? rightX : Math.max(6,leftX);
-      const by=Math.max(8, STAND_Y-HESI_H*0.68-h/2);
+      const by=Math.max(8, STAND_Y-HESI_DRAW_H*0.68-h/2);
       const tipX=onRight ? hx+40 : hx-40;
       const edgeX=onRight ? bx : bx+w;
       const midY=by+h/2;
