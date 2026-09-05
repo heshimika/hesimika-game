@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>みかづきさまのおくりもの 💗🌙</title>
+<style>
+  :root {
+    --murasaki: #532F73;
+    --murasaki-deep: #3d2255;
+    --cream: #fbf8ee;
+    --ink: #5a4a42;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    font-family:'Hiragino Maru Gothic ProN','BIZ UDGothic','Yu Gothic',sans-serif;
+    background:var(--cream); color:var(--ink);
+    display:flex; align-items:flex-start; justify-content:center;
+    user-select:none; -webkit-user-select:none;
+    min-height:100%; overflow-x:hidden;
+  }
+  #game { width:min(440px,100vw); display:flex; flex-direction:column; padding:12px; gap:8px; position:relative; }
+
+  .hud { display:flex; justify-content:center; gap:10px; }
+  .badge {
+    background:#fff; border-radius:16px; padding:6px 14px;
+    font-weight:bold; font-size:15px; text-align:center;
+    box-shadow:0 3px 0 rgba(90,74,66,.15); min-width:92px;
+  }
+  .badge small { display:block; font-size:10px; opacity:.6; font-weight:normal; }
+  #timeBadge.hurry { animation:hurryPulse .5s infinite alternate; color:#d9534f; }
+  @keyframes hurryPulse { from{transform:scale(1);} to{transform:scale(1.08);} }
+
+  #cvWrap { position:relative; border-radius:16px; overflow:hidden; box-shadow:0 5px 0 rgba(90,74,66,.15); }
+  #cv { display:block; width:100%; height:auto; max-height:70vh; object-fit:contain; touch-action:none; cursor:pointer; }
+
+  .overlay {
+    position:absolute; inset:0; background:rgba(251,248,238,.93);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:10px; text-align:center; padding:16px; z-index:10;
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
+  }
+  .overlay.hidden { display:none; }
+  .overlay h1 { font-size:22px; color:var(--murasaki); line-height:1.3; }
+  .overlay p { font-size:13px; line-height:1.7; }
+  .overlay .rule {
+    background:#fff; border-radius:14px; padding:10px 16px;
+    box-shadow:0 3px 0 rgba(90,74,66,.1);
+    font-size:12.5px; line-height:1.85; text-align:left;
+  }
+  .btn {
+    font-family:inherit; font-size:17px; font-weight:bold; color:#fff;
+    background:var(--murasaki); border:none; border-radius:999px;
+    padding:12px 40px; cursor:pointer;
+    box-shadow:0 5px 0 var(--murasaki-deep);
+    transition:transform .08s, box-shadow .08s;
+  }
+  .btn:active { transform:translateY(4px); box-shadow:0 1px 0 var(--murasaki-deep); }
+  #resultScore { font-size:40px; font-weight:bold; color:var(--murasaki); }
+  #resultDetail { font-size:13px; opacity:.75; }
+  #resultBest { font-size:12px; opacity:.65; }
+  #resultRank { font-size:17px; font-weight:bold; }
+  .hint { font-size:11px; opacity:.55; text-align:center; }
+</style>
+</head>
+<body>
+<div id="game">
+
+  <div class="hud">
+    <div class="badge"><small>スコア</small><span id="score">0</span></div>
+    <div class="badge" id="timeBadge"><small>のこり</small><span id="time">30</span>秒</div>
+    <div class="badge"><small>ベスト</small><span id="best">0</span></div>
+  </div>
+
+  <div id="cvWrap">
+    <canvas id="cv" width="400" height="300"></canvas>
+
+    <div class="overlay" id="startOverlay">
+      <p style="font-size:15px;font-weight:bold;color:#532F73;">30秒、ひとつ残らず受け止めよ！</p>
+      <div class="rule">
+        👆 ドラッグ / ←→キーで長谷部をうごかす<br>
+        💗 三日月の投げるハートをキャッチ <b>+10</b><br>
+        🌙 たまに投げてくる月は <b>+30</b>！<br>
+        🔥 連続キャッチでコンボボーナス<br>
+        💧 とりこぼすとコンボが切れる…
+      </div>
+      <button class="btn" id="startBtn">主命とあらば！</button>
+    </div>
+
+    <div class="overlay hidden" id="resultOverlay">
+      <div id="resultScore">0</div>
+      <div id="resultRank"></div>
+      <div id="resultDetail"></div>
+      <div id="resultBest"></div>
+      <p style="font-size:13px;color:#5a4a42;margin-top:4px;">もういちどやる？</p>
+      <button class="btn" id="retryBtn">まだ行けますよ</button>
+    </div>
+  </div>
+
+  <p class="hint">ドラッグ or ←→キーで長谷部をうごかす</p>
+</div>
+
+<script>
+/* =========================================================
+   みかづきさまのおくりもの — へしみかキャッチ(趣味・非公開用)
+   三日月が上からハートを投げ、長谷部がキャッチする30秒。外部PNG差分対応版。
+   ラスト5秒は「大盤振る舞い」で月も増える。
+   ========================================================= */
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+// ===== パレット(アイテム用) =====
+const PAL = {
+  H:'#F06292', h:'#F8A5C0',      // ハート
+  G:'#D4B24C', W:'#F0F0F0'       // 月ときらめき
+};
+
+// ===== キャラスプライト（HTMLと同じフォルダのPNGを読み込む） =====
+function loadSprite(src){
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+
+const SPRITES = {
+  mika_start:      loadSprite('mika_start.png'),
+  mika_left:       loadSprite('mika_left.png'),
+  mika_right:      loadSprite('mika_right.png'),
+  mika_rush:       loadSprite('mika_rush.png'),
+
+  hesi_start:      loadSprite('hesi_start.png'),
+  hesi_left:       loadSprite('hesi_left.png'),
+  hesi_right:      loadSprite('hesi_right.png'),
+  hesi_rush_front: loadSprite('hesi_rush_front.png'),
+  hesi_rush_back:  loadSprite('hesi_rush_back.png'),
+};
+
+// 512×512の透過PNGを、ゲーム内ではこの大きさで描画
+const HESI_W = 110, HESI_H = 110;
+const MIKA_W = 118, MIKA_H = 118;
+
+// ===== アイテム =====
+const HEART = [
+  ".HH.HH.",
+  "HhHHHhH",
+  "HHHHHHH",
+  ".HHHHH.",
+  "..HHH..",
+  "...H..."
+];
+const MOON = [
+  "..GGGG.",
+  ".GGG...",
+  "GGG....",
+  "GGG....",
+  "GGG....",
+  ".GGG...",
+  "..GGGG."
+];
+
+// ===== 描画ユーティリティ =====
+function drawMap(map, x, y, spr) {
+  for (let r=0; r<map.length; r++) {
+    const row = map[r];
+    for (let c=0; c<row.length; c++) {
+      const col = PAL[row[c]];
+      if (col) { ctx.fillStyle=col; ctx.fillRect(x+c*spr, y+r*spr, spr, spr); }
+    }
+  }
+}
+
+// ===== 効果音 =====
+let audioCtx=null;
+function sound(kind) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const t=audioCtx.currentTime;
+    const mk=(type,f0,f1,dur,vol,delay=0)=>{
+      const o=audioCtx.createOscillator(), gn=audioCtx.createGain();
+      o.connect(gn); gn.connect(audioCtx.destination);
+      o.type=type; o.frequency.setValueAtTime(f0,t+delay);
+      if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+delay+dur);
+      gn.gain.setValueAtTime(vol,t+delay);
+      gn.gain.exponentialRampToValueAtTime(.001,t+delay+dur);
+      o.start(t+delay); o.stop(t+delay+dur+.02);
+    };
+    if (kind==='heart'){ mk('sine',740,988,.12,.07); }
+    else if (kind==='moon'){ [784,1047,1319].forEach((f,i)=>mk('triangle',f,null,.2,.08,i*.08)); }
+    else if (kind==='miss'){ mk('sine',330,220,.15,.04); }
+    else if (kind==='rush'){ [523,659,523,1047].forEach((f,i)=>mk('square',f,null,.11,.08,i*.1)); }
+    else if (kind==='end'){ [523,659,784,1047].forEach((f,i)=>mk('triangle',f,null,.25,.09,i*.12)); }
+  } catch(e){}
+}
+
+// ===== 定数 =====
+const SPR = 3;
+const GAME_TIME = 30;
+const RUSH_AT = 9.5;               // 残り約9.5秒で長谷部→三日月の予告 → 演出後、ラスト約5〜6秒が大盤振る舞い
+const STAND_Y = 292;               // 長谷部の足の位置
+const CHAR_W = 78;       // 長谷部の実キャラ部分の当たり幅
+
+// ===== 状態 =====
+let playing=false;
+let frame=0, startTime=0, timeLeft=GAME_TIME;
+let hx=W/2, tx=W/2;                // 長谷部の位置と目標
+let mx=W/2, mTarget=W/2, mBob=0;   // 三日月の位置
+let happyT=0;                      // 長谷部キャッチ時のぴょこっタイマー
+let smileT=0;                      // 三日月投げ動作のぴょこっタイマー
+let mikaPoseT=0;                   // 通常時の左右投げポーズ表示時間
+let mikaThrowDir=1;                // -1:左投げ / +1:右投げ
+let hesiMoveDir=0;                 // -1:左移動 / 0:停止 / +1:右移動
+let throwIn=50, rushOn=false, rushShown=false, rushCued=false, rushHold=0, rushBannerT=0;
+let rushMikaSaid=false;             // 大盤振る舞い前の三日月セリフを1回だけ
+let introStage=0, introT=0;              // 1:静止 2:三日月 3:長谷部 / 0:ゲーム本編
+let hesiCatchSaid=false;            // 大盤振る舞い前に長谷部のキャッチ台詞を最低1回
+let score=0, best=0, combo=0, maxCombo=0;
+let hearts=0, moons=0, missed=0;
+let items=[];                      // {x,y,vx,vy,type:'heart'|'moon'}
+let fx=[];                         // スコアポップ
+let bubble=null;                   // 三日月のひとこと {text, life}
+let hesiBubble=null;               // 長谷部のひとこと {text, life}
+let rafId=null;
+
+const scoreEl=document.getElementById('score');
+const timeEl=document.getElementById('time');
+const timeBadge=document.getElementById('timeBadge');
+const bestEl=document.getElementById('best');
+
+function updateHUD(){
+  scoreEl.textContent=score;
+  timeEl.textContent=Math.ceil(timeLeft);
+  bestEl.textContent=best;
+  timeBadge.classList.toggle('hurry', timeLeft<=10 && playing);
+}
+
+// ===== 星空 =====
+const stars = Array.from({length:26},(_,i)=>({x:(i*67)%400, y:(i*41)%180, tw:i%3}));
+
+// ===== 三日月のひとこと =====
+function say(text, life=100){ bubble={text, life}; }
+function hesiSay(text, life=90, pos='side'){ hesiBubble={text, life, pos}; }
+
+// ===== 投げる =====
+const MIKA_LINES = ['うけとれ', '受け取れ', 'なかなかやるな', 'よきかなよきかな', 'はっはっは', 'よいぞよいぞ', 'はいっ！'];
+const HESI_CATCH = ['だからぁ？', 'っ…ははっ'];
+function throwItem(){
+  const moonRate = rushOn ? 0.28 : 0.12;
+  const type = Math.random() < moonRate ? 'moon' : 'heart';
+
+  // 左右の手を交互に使う。通常時はこの向きの差分を少しだけ表示。
+  mikaThrowDir *= -1;
+  mikaPoseT = 15;
+
+  if (rushOn){
+    if (Math.random()<0.35) say('はいっ！', 45);
+  } else if (type==='moon'){
+    say(Math.random()<0.5 ? 'これでどうだ' : 'これも受け取れ');
+  } else if (Math.random()<0.3){
+    say(MIKA_LINES[Math.floor(Math.random()*MIKA_LINES.length)]);
+  }
+
+  // 手元付近から落ち始める。左右のポーズに合わせて少し横へ飛ばす。
+  const handX = mx + mikaThrowDir * 28;
+  const handY = 14 + mBob + MIKA_H * 0.56;
+  const sideV = mikaThrowDir * (0.55 + Math.random()*0.55);
+
+  items.push({
+    x: handX - 10,
+    y: handY,
+    vx: sideV,
+    vy: 1.45,
+    type
+  });
+
+  // たまに2個いっぺんに
+  if (Math.random() < (rushOn?0.6:0.25)){
+    const t2 = Math.random()<moonRate ? 'moon' : 'heart';
+    items.push({
+      x: handX + (Math.random()*16-8) - 10,
+      y: handY - 5,
+      vx: sideV * 0.75 + (Math.random()*0.5-0.25),
+      vy: 1.25,
+      type:t2
+    });
+  }
+
+  smileT=22;
+  throwIn = rushOn ? (10+Math.random()*8) : (30+Math.random()*20);
+}
+
+// ===== メインループ =====
+function loop(){
+  frame++;
+
+  // ===== 開始演出 =====
+  // ① 約1秒静止 → ② 三日月「へしみかはじめよう」
+  // → ③ 長谷部「主の命とあらば」 → ④ ここで30秒タイマー開始
+  if (introStage>0){
+    timeLeft=GAME_TIME;
+
+    if (bubble && --bubble.life<=0) bubble=null;
+    if (hesiBubble && --hesiBubble.life<=0) hesiBubble=null;
+
+    introT--;
+
+    if (introStage===1 && introT<=0){
+      introStage=2;
+      introT=85;
+      say('へしみかはじめよう', 85);
+    } else if (introStage===2 && introT<=0){
+      bubble=null;
+      introStage=3;
+      introT=80;
+      hesiSay('主の命とあらば', 80, 'top');
+    } else if (introStage===3 && introT<=0){
+      hesiBubble=null;
+      introStage=0;
+      startTime=performance.now();
+      throwIn=35;
+    }
+
+    render();
+    updateHUD();
+    if (playing) rafId=requestAnimationFrame(loop);
+    return;
+  }
+
+  timeLeft=Math.max(0, GAME_TIME-(performance.now()-startTime)/1000);
+  if (happyT>0) happyT--;
+  if (smileT>0) smileT--;
+  if (mikaPoseT>0) mikaPoseT--;
+  if (bubble && --bubble.life<=0) bubble=null;
+  if (hesiBubble && --hesiBubble.life<=0) hesiBubble=null;
+
+  // 大盤振る舞い前：長谷部 → 三日月 → 中央演出 → 怒涛スタート
+  if (timeLeft<=RUSH_AT && !rushCued){
+    rushCued=true;
+    rushMikaSaid=false;
+    rushHold=170;                         // 約2.8秒：長谷部75f → 三日月95f
+    bubble=null;
+    hesiBubble=null;
+    hesiSay('主への手土産ができたな', 75, 'top');
+  }
+  if (rushHold>0){
+    rushHold--;
+    if (rushHold===95 && !rushMikaSaid){  // 長谷部のあと、三日月
+      rushMikaSaid=true;
+      hesiBubble=null;
+      say('暑いな…本気になるか', 95);
+    }
+    if (rushHold===0){                    // セリフ終了 → 「大盤振る舞い！」をドン！
+      bubble=null;
+      hesiBubble=null;
+      rushBannerT=48;                     // 約0.8秒、中央の縦演出
+      sound('rush');
+    }
+  } else if (rushBannerT>0){
+    rushBannerT--;
+    if (rushBannerT===0){                 // 演出終了 → 怒涛スタート！
+      rushOn=true; rushShown=true;
+      throwIn=4;
+      hesiSay('はぁぁあ！', 72);          // 大盤振る舞い開始の気合い
+    }
+  }
+
+  // 長谷部移動：移動方向に合わせて差分を切り替える
+  const hesiDx = tx-hx;
+  hesiMoveDir = Math.abs(hesiDx)>1.6 ? (hesiDx<0 ? -1 : 1) : 0;
+  hx += hesiDx*0.22;
+  hx = Math.max(CHAR_W/2+4, Math.min(W-CHAR_W/2-4, hx));
+
+  // 三日月ふよふよ移動
+  if (frame%120===0 || Math.abs(mx-mTarget)<4) mTarget = 60 + Math.random()*(W-120);
+  mx += (mTarget-mx)*0.02;
+  mBob = Math.sin(frame*0.05)*4;
+
+  throwIn--;
+  if (throwIn<=0 && timeLeft>0.5 && rushHold<=0 && rushBannerT<=0) throwItem();
+
+  // アイテム落下+キャッチ判定
+  const cy0 = STAND_Y-HESI_H, cy1 = STAND_Y-HESI_H*0.42;   // 長谷部の上半身
+  const frozen = rushHold>0 || rushBannerT>0;                 // タメ＆大盤振る舞い演出中は空中で静止
+  for (const it of items){
+    if (!frozen){
+      it.y += it.vy;
+      it.x += it.vx;
+      it.vy += 0.07;                                     // ぐんぐん加速
+    }
+    if (frozen) continue;              // タメ中は判定もしない(完全に静止)
+    if (it.x<10||it.x>W-24) it.vx*=-1;                 // 端で跳ね返る
+    const cx=it.x+10, cyy=it.y+9;
+    if (cyy>=cy0 && cyy<=cy1 && Math.abs(cx-hx)<CHAR_W/2+4){
+      it.got=true;
+      combo++; maxCombo=Math.max(maxCombo,combo);
+      const bonus=Math.min(combo-1,5)*2;
+      const base=it.type==='moon'?30:10;
+      score+=base+bonus;
+      if (it.type==='moon'){ moons++; sound('moon'); }
+      else { hearts++; sound('heart'); }
+      happyT=30;
+      if (!rushCued && introStage===0 && (!hesiCatchSaid || Math.random()<0.18)){
+        hesiCatchSaid=true;
+        hesiSay(HESI_CATCH[Math.floor(Math.random()*HESI_CATCH.length)], 50, 'side');
+      }
+      fx.push({x:it.x, y:cy0-8, text:`+${base+bonus}`,
+               color: it.type==='moon'?'#c9932b':'#e0508a', life:36});
+    }
+    if (!it.got && it.y>H){ it.miss=true; missed++; combo=0; sound('miss'); }
+  }
+  items=items.filter(it=>!it.got && !it.miss);
+  for (const f of fx){ f.y-=0.8; f.life--; }
+  fx=fx.filter(f=>f.life>0);
+
+  render();
+  updateHUD();
+
+  if (timeLeft<=0 && items.length===0){ endGame(); return; }
+  if (playing) rafId=requestAnimationFrame(loop);
+}
+
+// ===== 描画 =====
+function render(){
+  // 夜空
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#232f4d'); grad.addColorStop(0.7,'#3d4a73'); grad.addColorStop(1,'#54476b');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+  // 星
+  ctx.fillStyle='#f0ead2';
+  for (const s of stars){
+    if ((frame>>4)%3===s.tw) continue;   // またたき
+    ctx.fillRect(s.x, s.y, 2, 2);
+  }
+  // 縁側の床
+  ctx.fillStyle='#6b4a30'; ctx.fillRect(0, STAND_Y+2, W, H-STAND_Y);
+  ctx.fillStyle='#8a5e3c'; ctx.fillRect(0, STAND_Y-4, W, 6);
+  ctx.fillStyle='#7a5136';
+  for(let x=0;x<W;x+=57) ctx.fillRect(x, STAND_Y+2, 2, H-STAND_Y);
+
+  // 三日月
+  // 通常：待機 / 左投げ / 右投げ
+  // 大盤振る舞い：start と rush を高速交互表示 → 両手でバンバン投げる動き
+  let mikaImg = SPRITES.mika_start;
+  if (rushOn){
+    mikaImg = (Math.floor(frame/14)%2===0) ? SPRITES.mika_start : SPRITES.mika_rush;
+  } else if (mikaPoseT>0){
+    mikaImg = mikaThrowDir<0 ? SPRITES.mika_left : SPRITES.mika_right;
+  }
+  if (mikaImg.complete && mikaImg.naturalWidth){
+    const hop = smileT>16 ? -3 : 0;
+    ctx.drawImage(mikaImg, mx-MIKA_W/2, 10+mBob+hop, MIKA_W, MIKA_H);
+  }
+
+  // ふきだし(三日月のすぐ下に大きめ)
+  if (bubble){
+    ctx.font='bold 15px sans-serif';
+    const w=ctx.measureText(bubble.text).width+20;
+    const bx=Math.min(W-w-6, Math.max(6, mx-w/2));
+    const by=10+MIKA_H+mBob-1;
+    ctx.globalAlpha=Math.min(1, bubble.life/15);
+    // しっぽ(上向き)
+    ctx.fillStyle='rgba(251,248,238,.96)';
+    ctx.beginPath();
+    ctx.moveTo(mx-6, by); ctx.lineTo(mx+6, by); ctx.lineTo(mx, by-7); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(bx, by, w, 24, 10); ctx.fill();
+    ctx.fillStyle='#3d2255';
+    ctx.textBaseline='middle';
+    ctx.fillText(bubble.text, bx+10, by+13);
+    ctx.globalAlpha=1;
+  }
+
+  // アイテム
+  for (const it of items){
+    if (it.type==='moon'){
+      drawMap(MOON, it.x, it.y, SPR);
+      if (frame%16<8){ ctx.fillStyle=PAL.W; ctx.fillRect(it.x+22, it.y+2, 3, 3); }
+    } else {
+      drawMap(HEART, it.x, it.y, SPR);
+    }
+  }
+
+  // 長谷部
+  // 通常：前向きの移動絵を左右反転して使用（後ろ姿は使わない）
+  // 大盤振る舞い中：汗だくの前向き絵を左右反転して使用
+  let hesiImg = SPRITES.hesi_start;
+  let hesiFlip = false;
+  if (rushOn){
+    hesiImg = SPRITES.hesi_rush_front;
+    hesiFlip = hesiMoveDir > 0;
+  } else if (rushHold>0 || rushBannerT>0){
+    hesiImg = SPRITES.hesi_start;
+  } else if (hesiMoveDir<0){
+    hesiImg = SPRITES.hesi_left;
+  } else if (hesiMoveDir>0){
+    hesiImg = SPRITES.hesi_left;
+    hesiFlip = true;
+  }
+
+  if (hesiImg.complete && hesiImg.naturalWidth){
+    const hop = happyT>24 ? -3 : 0;
+    const drawY = STAND_Y-HESI_H+hop;
+    if (hesiFlip){
+      ctx.save();
+      ctx.translate(hx, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(hesiImg, -HESI_W/2, drawY, HESI_W, HESI_H);
+      ctx.restore();
+    } else {
+      ctx.drawImage(hesiImg, hx-HESI_W/2, drawY, HESI_W, HESI_H);
+    }
+  }
+  if (happyT>18){ ctx.font='14px sans-serif'; ctx.fillText('💗', hx+HESI_W/2-2, STAND_Y-HESI_H+2); }
+
+  // 長谷部のふきだし：通常は横／「主への手土産ができたな」は頭上
+  if (hesiBubble){
+    ctx.font='bold 13px sans-serif';
+    const w=ctx.measureText(hesiBubble.text).width+18;
+    ctx.globalAlpha=Math.min(1, hesiBubble.life/15);
+    ctx.fillStyle='rgba(83,47,115,.95)';
+
+    if (hesiBubble.pos==='top'){
+      // 大盤振る舞い前はアイテム停止中なので、頭上に大きく出す
+      const bx=Math.min(W-w-6, Math.max(6, hx-w/2));
+      const by=STAND_Y-HESI_H-24;
+      ctx.beginPath();
+      ctx.moveTo(hx-6, by+22); ctx.lineTo(hx+6, by+22); ctx.lineTo(hx, by+29); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(bx, by, w, 22, 9); ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.textBaseline='middle';
+      ctx.fillText(hesiBubble.text, bx+9, by+12);
+    } else {
+      // キャッチ中の「だからぁ？」「っ…ははっ」などは横に出す
+      const h=24, gap=9;
+      const rightX=hx+41+gap;
+      const leftX=hx-41-gap-w;
+      const onRight=(rightX+w<=W-6);
+      const bx=onRight ? rightX : Math.max(6,leftX);
+      const by=Math.max(8, STAND_Y-HESI_H*0.68-h/2);
+      const tipX=onRight ? hx+40 : hx-40;
+      const edgeX=onRight ? bx : bx+w;
+      const midY=by+h/2;
+      ctx.beginPath();
+      ctx.moveTo(edgeX, midY-6); ctx.lineTo(edgeX, midY+6); ctx.lineTo(tipX, midY); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(bx, by, w, h, 9); ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.textBaseline='middle';
+      ctx.fillText(hesiBubble.text, bx+9, by+h/2+1);
+    }
+    ctx.globalAlpha=1;
+  }
+
+  // スコアポップ
+  ctx.font='bold 13px monospace'; ctx.textBaseline='middle';
+  for (const f of fx){
+    ctx.globalAlpha=Math.min(1, f.life/18);
+    ctx.fillStyle=f.color;
+    ctx.fillText(f.text, f.x-6, f.y);
+    ctx.globalAlpha=1;
+  }
+  // コンボ
+  if (combo>=2 && playing){
+    ctx.font='bold 15px monospace';
+    ctx.fillStyle='#f0d9a8';
+    ctx.fillText(`${combo} combo!💗`, W-118, 88);
+  }
+
+
+  // 大盤振る舞い演出（中央の縦帯。会心の一撃風にドン！）
+  if (rushBannerT>0){
+    const maxT=48;
+    const age=maxT-rushBannerT;
+    const pop=Math.min(1, age/7);
+    const fade=Math.min(1, rushBannerT/10);
+    const scale=0.84+0.16*pop;
+    const chars=['大','盤','振','る','舞','い','！'];
+
+    ctx.save();
+    ctx.globalAlpha=fade;
+    ctx.translate(W/2, H/2);
+    ctx.scale(scale, scale);
+
+    // 縦長の暗い帯＋金色の発光
+    const bw=78, bh=264;
+    const grd=ctx.createLinearGradient(-bw/2,0,bw/2,0);
+    grd.addColorStop(0,'rgba(21,13,33,.20)');
+    grd.addColorStop(.20,'rgba(42,24,63,.90)');
+    grd.addColorStop(.50,'rgba(28,17,46,.96)');
+    grd.addColorStop(.80,'rgba(42,24,63,.90)');
+    grd.addColorStop(1,'rgba(21,13,33,.20)');
+    ctx.fillStyle=grd;
+    ctx.fillRect(-bw/2,-bh/2,bw,bh);
+
+    ctx.strokeStyle='rgba(240,211,111,.72)';
+    ctx.lineWidth=2;
+    ctx.strokeRect(-bw/2+4,-bh/2+4,bw-8,bh-8);
+
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.font='900 29px "Yu Mincho","Hiragino Mincho ProN",serif';
+    ctx.fillStyle='#fff6c7';
+    ctx.shadowColor='#f0d36f';
+    ctx.shadowBlur=18;
+    const step=32;
+    const startY=-(chars.length-1)*step/2;
+    chars.forEach((ch,i)=>ctx.fillText(ch,0,startY+i*step));
+
+    ctx.restore();
+  }
+}
+
+// ===== 終了 =====
+function endGame(){
+  playing=false;
+  if (score>best) best=score;
+  sound('end');
+  const HIGH_RANK = [
+    'どうです？俺は強くなりましたよ',
+    '主命を果たしたまでのことです',
+    '結果を出すのは当然です',
+    '最良の結果を主に',
+  ];
+  const MID_RANK = [
+    'お納めください',
+    '任務が達成されましたよ。ご確認を',
+    '手加減しろ、とは言われていなかったからなあ？',
+    '訓練といえど主が勝てというので',
+  ];
+  const pool = score>=450 ? HIGH_RANK : score>=200 ? HIGH_RANK.concat(MID_RANK) : MID_RANK;
+  const rank = '🍆 ' + pool[Math.floor(Math.random()*pool.length)];
+  document.getElementById('resultScore').textContent = `${score} てん`;
+  document.getElementById('resultDetail').textContent =
+    `💗×${hearts} ／ 🌙×${moons} ／ さいだい${maxCombo}コンボ` + (missed?` ／ とりこぼし×${missed}`:' ／ 完全受領✨');
+  document.getElementById('resultRank').textContent = rank;
+  const BTN_LINES = [
+    'まだ行けますよ。死ななきゃ安い',
+    '拝命いたしましょう',
+    '主の思うままに',
+    '主命とあらば',
+    'おまかせあれ。なんでも斬って差し上げましょう',
+    '何をしましょうか。ご随意にどうぞ',
+  ];
+  document.getElementById('retryBtn').textContent = BTN_LINES[Math.floor(Math.random()*BTN_LINES.length)];
+  document.getElementById('resultBest').textContent = `ベストスコア: ${best}`;
+  document.getElementById('resultOverlay').classList.remove('hidden');
+  updateHUD();
+}
+
+// ===== 開始 =====
+function startGame(){
+  score=0; combo=0; maxCombo=0; hearts=0; moons=0; missed=0;
+  items=[]; fx=[]; bubble=null; hesiBubble=null;
+  throwIn=40; rushOn=false; rushShown=false; rushCued=false; rushHold=0; rushBannerT=0;
+  rushMikaSaid=false; introStage=1; introT=60; hesiCatchSaid=false;
+  happyT=0; smileT=0; mikaPoseT=0; mikaThrowDir=1; hesiMoveDir=0; frame=0;
+  hx=W/2; tx=W/2; mx=W/2; mTarget=W/2;
+  startTime=0; timeLeft=GAME_TIME;
+  playing=true;
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('resultOverlay').classList.add('hidden');
+  updateHUD();
+  cancelAnimationFrame(rafId);
+  rafId=requestAnimationFrame(loop);
+}
+
+// ===== 入力 =====
+function pointerX(e){
+  const rect=cv.getBoundingClientRect();
+  // max-height + object-fit:contain で左右に余白が出る場合を補正
+  const scale = Math.min(rect.width/W, rect.height/H);
+  const drawnW = W*scale;
+  const padX = (rect.width - drawnW)/2;
+  return (e.clientX - rect.left - padX) / scale;
+}
+cv.addEventListener('pointerdown', e=>{ if(playing && introStage===0) tx=pointerX(e); });
+cv.addEventListener('pointermove', e=>{ if(playing && introStage===0 && (e.buttons||e.pointerType==='touch')) tx=pointerX(e); });
+let keyDir=0;
+document.addEventListener('keydown', e=>{
+  if (e.code==='ArrowLeft'){ e.preventDefault(); keyDir=-1; }
+  if (e.code==='ArrowRight'){ e.preventDefault(); keyDir=1; }
+});
+document.addEventListener('keyup', e=>{
+  if (e.code==='ArrowLeft'&&keyDir<0) keyDir=0;
+  if (e.code==='ArrowRight'&&keyDir>0) keyDir=0;
+});
+setInterval(()=>{ if(keyDir&&playing&&introStage===0) tx=Math.max(20,Math.min(W-20,tx+keyDir*14)); }, 16);
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('retryBtn').addEventListener('click', startGame);
+
+render(); updateHUD();
+</script>
+</body>
+</html>
