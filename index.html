@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>🍆へしみか🌙ハートきゃっち💗</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E💗%3C/text%3E%3C/svg%3E">
 <style>
@@ -25,11 +25,15 @@
     display:flex; align-items:flex-start; justify-content:center;
     user-select:none; -webkit-user-select:none;
     min-height:100%; overflow-x:hidden;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
   #game {
     width:min(430px,100vw);
     display:flex; flex-direction:column;
-    padding:10px 10px 14px;
+    padding:18px 10px 22px;
     gap:10px;
     position:relative;
   }
@@ -404,7 +408,7 @@
   .rankLinkBtn:focus-visible { outline:none; box-shadow:none; }
 
   @media (max-width: 420px) {
-    #game { padding:8px 8px 12px; gap:8px; }
+    #game { padding:14px 8px 18px; gap:8px; }
     .badge { border-radius:18px; padding:5px 6px 6px; min-height:54px; }
     .badge span { font-size:17px; }
     .badge small { font-size:9.5px; }
@@ -839,7 +843,9 @@ function say(text, life=100){ bubble={text, life}; }
 function hesiSay(text, life=90, pos='side'){ hesiBubble={text, life, pos}; }
 
 // ===== 投げる =====
-const MIKA_LINES = ['うけとれ', '受け取れ', 'なかなかやるな', 'よきかなよきかな', 'はっはっは', 'よいぞよいぞ', 'はいっ！'];
+const MIKA_LINES = ['受け取れ', 'なかなかやるな', 'よきかなよきかな', 'あっはははは', 'いいぞいいぞ', 'やるか'];
+const MIKA_RUSH_PRE_LINES = ['暑いな…本気になるか', '一騎打ちとは古風だな', 'はははは、いや…笑ってる場合ではないな'];
+const MIKA_INTRO2_LINES = ['俺の負けでもいいんだが…', 'さて、給料分は仕事をするか', '出陣か、わかった', 'うむ、では参加するか'];
 const HESI_CATCH = ['だからぁ？', 'っ…ははっ'];
 
 function shuffle(arr){
@@ -896,9 +902,7 @@ function spawnPlannedEvent(types){
 
   if (rushOn){
     if (Math.random()<0.35) say('はいっ！', 45);
-  } else if (hasMoon){
-    say(Math.random()<0.5 ? 'これでどうだ' : 'これも受け取れ');
-  } else if (hasHeart && Math.random()<0.3){
+  } else if ((hasHeart || hasMoon) && Math.random()<0.35){
     say(MIKA_LINES[Math.floor(Math.random()*MIKA_LINES.length)]);
   }
 
@@ -945,8 +949,10 @@ function loop(){
   frame++;
 
   // ===== 開始演出 =====
-  // ① 約1秒静止 → ② 三日月「へしみかはじめよう」
-  // → ③ 長谷部「主の命とあらば」 → ④ ここで30秒タイマー開始
+  // ① 約1秒静止 → ② 三日月「へしみか、はじめよう」
+  // → ③ 三日月「俺の負けでもいいんだが…」
+  // → ④ 長谷部「主の命とあらば」
+  // → ⑤ 長谷部「拝命いたしましょう」 → ⑥ ここで30秒タイマー開始
   if (introStage>0){
     timeLeft=GAME_TIME;
 
@@ -958,13 +964,23 @@ function loop(){
     if (introStage===1 && introT<=0){
       introStage=2;
       introT=85;
-      say('へしみかはじめよう', 85);
+      say('へしみか、はじめよう', 85);
     } else if (introStage===2 && introT<=0){
       bubble=null;
       introStage=3;
+      introT=85;
+      say(MIKA_INTRO2_LINES[Math.floor(Math.random()*MIKA_INTRO2_LINES.length)], 85);
+    } else if (introStage===3 && introT<=0){
+      bubble=null;
+      introStage=4;
       introT=80;
       hesiSay('主の命とあらば', 80, 'top');
-    } else if (introStage===3 && introT<=0){
+    } else if (introStage===4 && introT<=0){
+      hesiBubble=null;
+      introStage=5;
+      introT=80;
+      hesiSay('拝命いたしましょう', 80, 'top');
+    } else if (introStage===5 && introT<=0){
       hesiBubble=null;
       introStage=0;
       startTime=performance.now();
@@ -1020,7 +1036,7 @@ function loop(){
     if (rushHold===95 && !rushMikaSaid){  // 長谷部のあと、三日月
       rushMikaSaid=true;
       hesiBubble=null;
-      say('暑いな…本気になるか', 95);
+      say(MIKA_RUSH_PRE_LINES[Math.floor(Math.random()*MIKA_RUSH_PRE_LINES.length)], 95);
     }
     if (rushHold===0){                    // セリフ終了 → 「大盤振る舞い！」をドン！
       bubble=null;
@@ -1142,10 +1158,10 @@ function render(){
     if ((frame>>4)%3===s.tw) continue;   // またたき
     ctx.fillRect(s.x, s.y, 2, 2);
   }
-  // 芝生
-  ctx.fillStyle='#5f9d4f'; ctx.fillRect(0, STAND_Y+2, W, H-STAND_Y);
-  ctx.fillStyle='#8cd06b'; ctx.fillRect(0, STAND_Y-4, W, 6);
-  ctx.fillStyle='#72b457';
+  // 夜の屋根色（形はそのまま）
+  ctx.fillStyle='#4e5f6f'; ctx.fillRect(0, STAND_Y+2, W, H-STAND_Y);
+  ctx.fillStyle='#6e8293'; ctx.fillRect(0, STAND_Y-4, W, 6);
+  ctx.fillStyle='#5d7182';
   for(let x=0;x<W;x+=44) ctx.fillRect(x, STAND_Y+2, 2, H-STAND_Y);
 
   // 三日月
