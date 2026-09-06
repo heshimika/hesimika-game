@@ -193,6 +193,178 @@
     margin-top:-2px; margin-bottom:2px;
   }
 
+
+  /* ===== ランキング ===== */
+  .rankLinkBtn {
+    border:0;
+    background:transparent;
+    color:var(--murasaki);
+    font-family:inherit;
+    font-size:12px;
+    font-weight:800;
+    cursor:pointer;
+    padding:6px 10px;
+    opacity:.88;
+  }
+  .rankLinkBtn:hover { opacity:1; text-decoration:underline; }
+
+  .resultRankBtn {
+    border:1px solid #dacde7;
+    background:#fff;
+    color:var(--murasaki);
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:800;
+    border-radius:999px;
+    padding:7px 14px;
+    cursor:pointer;
+    box-shadow:0 2px 0 rgba(83,47,115,.12);
+  }
+
+  #rankingModal {
+    position:fixed;
+    inset:0;
+    z-index:1000;
+    background:rgba(35,28,45,.48);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  }
+  .rankingCard {
+    position:relative;
+    width:min(390px, 94vw);
+    max-height:min(620px, 90vh);
+    overflow:auto;
+    background:#fffdf8;
+    border:2px solid #eadfce;
+    border-radius:24px;
+    box-shadow:0 8px 0 rgba(61,34,85,.22);
+    padding:20px 18px 18px;
+    text-align:center;
+  }
+  .rankingClose {
+    position:absolute;
+    right:12px;
+    top:9px;
+    border:0;
+    background:transparent;
+    color:#8e7c73;
+    font-size:26px;
+    line-height:1;
+    cursor:pointer;
+    padding:4px 7px;
+  }
+  .rankingTitle {
+    color:var(--murasaki);
+    font-size:20px;
+    margin:2px 28px 12px;
+  }
+  .rankingSubmitArea {
+    background:#fff;
+    border-radius:16px;
+    box-shadow:0 3px 0 rgba(90,74,66,.10);
+    padding:11px 12px 12px;
+    margin-bottom:12px;
+  }
+  .rankingScoreLabel {
+    color:var(--murasaki);
+    font-size:14px;
+    font-weight:800;
+    margin-bottom:8px;
+  }
+  .rankingFormRow {
+    display:flex;
+    gap:7px;
+  }
+  #playerNameInput {
+    min-width:0;
+    flex:1;
+    border:1.5px solid #ded3c8;
+    border-radius:12px;
+    background:#fffdfb;
+    color:var(--ink);
+    font-family:inherit;
+    font-size:14px;
+    padding:9px 10px;
+    outline:none;
+    user-select:text;
+    -webkit-user-select:text;
+  }
+  #playerNameInput:focus {
+    border-color:#9b76b8;
+    box-shadow:0 0 0 3px rgba(83,47,115,.09);
+  }
+  #sendScoreBtn {
+    flex:0 0 auto;
+    border:0;
+    border-radius:12px;
+    background:var(--murasaki);
+    color:#fff;
+    font-family:inherit;
+    font-size:13px;
+    font-weight:800;
+    padding:9px 13px;
+    cursor:pointer;
+  }
+  #sendScoreBtn:disabled { opacity:.55; cursor:wait; }
+  .rankingNote {
+    font-size:10.5px;
+    color:#8e7c73;
+    margin-top:7px;
+  }
+  #rankingSubmitStatus {
+    min-height:18px;
+    font-size:11.5px;
+    font-weight:700;
+    color:var(--murasaki);
+    margin-top:7px;
+  }
+  #rankingStatus {
+    font-size:12px;
+    color:#8e7c73;
+    min-height:18px;
+    margin:4px 0 8px;
+  }
+  #rankingList {
+    list-style:none;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding:0;
+    margin:0;
+  }
+  .rankingRow {
+    display:grid;
+    grid-template-columns:42px 1fr auto;
+    align-items:center;
+    gap:8px;
+    background:#fff;
+    border:1px solid #f0e6dc;
+    border-radius:13px;
+    padding:8px 10px;
+    text-align:left;
+  }
+  .rankingPlace {
+    font-weight:900;
+    color:#8b6aa6;
+    text-align:center;
+  }
+  .rankingName {
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+    font-weight:700;
+  }
+  .rankingScore {
+    color:var(--murasaki);
+    font-size:13px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
   @media (max-width: 420px) {
     #game { padding:8px 8px 12px; gap:8px; }
     .badge { border-radius:18px; padding:5px 6px 6px; min-height:54px; }
@@ -229,6 +401,7 @@
     <div class="startBtnWrap">
       <button class="btn" id="startBtn">主命とあらば！</button>
     </div>
+    <button class="rankLinkBtn" id="openRankingBtn" type="button">🏆 ランキングを見る</button>
   </section>
 
   <div id="cvWrap" class="hidden">
@@ -239,10 +412,33 @@
       <div id="resultRank"></div>
       <div id="resultDetail"></div>
       <div id="resultBest"></div>
+      <button class="resultRankBtn" id="registerScoreBtn" type="button">🏆 ランキングに登録</button>
       <p style="font-size:12px;color:#7a6b64;opacity:.75;margin-top:0px;">もういちどやる？</p>
       <button class="btn" id="retryBtn">まだ行けますよ</button>
     </div>
   </div>
+
+  <div id="rankingModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="rankingTitle">
+    <div class="rankingCard">
+      <button class="rankingClose" id="closeRankingBtn" type="button" aria-label="閉じる">×</button>
+      <h2 class="rankingTitle" id="rankingTitle">🏆 へしみかランキング</h2>
+
+      <div class="rankingSubmitArea hidden" id="rankingSubmitArea">
+        <div class="rankingScoreLabel" id="rankingScoreLabel">今回のスコア</div>
+        <div class="rankingFormRow">
+          <input id="playerNameInput" type="text" maxlength="16" autocomplete="nickname"
+                 placeholder="なまえ（16文字まで）">
+          <button id="sendScoreBtn" type="button">登録</button>
+        </div>
+        <div class="rankingNote">表示名はランキングに公開されます</div>
+        <div id="rankingSubmitStatus"></div>
+      </div>
+
+      <div id="rankingStatus">読み込み中…</div>
+      <ol id="rankingList"></ol>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -384,6 +580,189 @@ const scoreEl=document.getElementById('score');
 const timeEl=document.getElementById('time');
 const timeBadge=document.getElementById('timeBadge');
 const bestEl=document.getElementById('best');
+
+
+// ===== オンラインランキング（Supabase Edge Function） =====
+const LEADERBOARD_API = 'https://ukuxypngootnncxwtgdg.supabase.co/functions/v1/leaderboard-api';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JliqWzWc5shbQidiaXrOrA_nKpKUKJ3';
+
+const rankingModal = document.getElementById('rankingModal');
+const rankingSubmitArea = document.getElementById('rankingSubmitArea');
+const rankingStatus = document.getElementById('rankingStatus');
+const rankingSubmitStatus = document.getElementById('rankingSubmitStatus');
+const rankingList = document.getElementById('rankingList');
+const rankingScoreLabel = document.getElementById('rankingScoreLabel');
+const playerNameInput = document.getElementById('playerNameInput');
+const sendScoreBtn = document.getElementById('sendScoreBtn');
+
+function storageGet(key){
+  try { return localStorage.getItem(key); } catch(e) { return null; }
+}
+function storageSet(key, value){
+  try { localStorage.setItem(key, value); } catch(e) {}
+}
+function makeUuid(){
+  if (window.crypto && typeof window.crypto.randomUUID === 'function'){
+    return window.crypto.randomUUID();
+  }
+  // RFC4122 v4 fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+    const r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+function getPlayerId(){
+  let id=storageGet('heshimika_player_id');
+  const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!id || !uuidRe.test(id)){
+    id=makeUuid();
+    storageSet('heshimika_player_id', id);
+  }
+  return id;
+}
+
+async function leaderboardRequest(method='GET', body=null){
+  const options={
+    method,
+    headers:{
+      'apikey': SUPABASE_PUBLISHABLE_KEY,
+      'Content-Type':'application/json'
+    }
+  };
+  if (body) options.body=JSON.stringify(body);
+
+  const res=await fetch(LEADERBOARD_API, options);
+  let data={};
+  try { data=await res.json(); } catch(e) {}
+  if (!res.ok){
+    throw new Error(data.error || data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+function renderLeaderboard(rows){
+  rankingList.replaceChildren();
+
+  if (!Array.isArray(rows) || rows.length===0){
+    const empty=document.createElement('li');
+    empty.className='rankingRow';
+    empty.style.gridTemplateColumns='1fr';
+    empty.style.textAlign='center';
+    empty.textContent='まだランキングは空っぽです';
+    rankingList.appendChild(empty);
+    return;
+  }
+
+  const medals=['🥇','🥈','🥉'];
+  rows.slice(0,10).forEach((row, index)=>{
+    const li=document.createElement('li');
+    li.className='rankingRow';
+
+    const place=document.createElement('div');
+    place.className='rankingPlace';
+    place.textContent=medals[index] || `${index+1}位`;
+
+    const name=document.createElement('div');
+    name.className='rankingName';
+    name.textContent=String(row.player_name ?? 'ななし');
+
+    const sc=document.createElement('div');
+    sc.className='rankingScore';
+    sc.textContent=`${Number(row.score)||0}てん`;
+
+    li.append(place, name, sc);
+    rankingList.appendChild(li);
+  });
+}
+
+async function loadLeaderboard(){
+  rankingStatus.textContent='ランキング読み込み中…';
+  rankingList.replaceChildren();
+  try {
+    const data=await leaderboardRequest('GET');
+    renderLeaderboard(data.leaderboard || []);
+    rankingStatus.textContent='';
+  } catch(err){
+    rankingStatus.textContent='ランキングにつながりませんでした。少し待ってもう一度お試しください。';
+    console.error('leaderboard GET:', err);
+  }
+}
+
+function openRanking(mode='view'){
+  rankingModal.classList.remove('hidden');
+  rankingSubmitStatus.textContent='';
+
+  const savedName=storageGet('heshimika_player_name') || '';
+  playerNameInput.value=savedName;
+
+  if (mode==='submit'){
+    rankingSubmitArea.classList.remove('hidden');
+    rankingScoreLabel.textContent=`今回のスコア：${score}てん`;
+  } else {
+    rankingSubmitArea.classList.add('hidden');
+  }
+
+  loadLeaderboard();
+}
+
+function closeRanking(){
+  rankingModal.classList.add('hidden');
+}
+
+async function submitCurrentScore(){
+  const name=playerNameInput.value.trim();
+  if (!name){
+    rankingSubmitStatus.textContent='なまえを入れてください';
+    playerNameInput.focus();
+    return;
+  }
+  if ([...name].length>16){
+    rankingSubmitStatus.textContent='なまえは16文字までです';
+    return;
+  }
+
+  sendScoreBtn.disabled=true;
+  rankingSubmitStatus.textContent='登録中…';
+
+  try {
+    const data=await leaderboardRequest('POST', {
+      player_id:getPlayerId(),
+      player_name:name,
+      score:Math.max(0, Math.floor(score))
+    });
+
+    storageSet('heshimika_player_name', name);
+
+    if (data.new_best){
+      rankingSubmitStatus.textContent='✨ 自己ベスト更新！ 登録しました';
+    } else if (typeof data.best_score==='number'){
+      rankingSubmitStatus.textContent=`登録済み！ 自己ベストは ${data.best_score}てん`;
+    } else {
+      rankingSubmitStatus.textContent='登録しました！';
+    }
+
+    await loadLeaderboard();
+  } catch(err){
+    rankingSubmitStatus.textContent='登録できませんでした。少し待ってもう一度お試しください。';
+    console.error('leaderboard POST:', err);
+  } finally {
+    sendScoreBtn.disabled=false;
+  }
+}
+
+document.getElementById('openRankingBtn').addEventListener('click', ()=>openRanking('view'));
+document.getElementById('registerScoreBtn').addEventListener('click', ()=>openRanking('submit'));
+document.getElementById('closeRankingBtn').addEventListener('click', closeRanking);
+sendScoreBtn.addEventListener('click', submitCurrentScore);
+playerNameInput.addEventListener('keydown', e=>{
+  if (e.key==='Enter') submitCurrentScore();
+});
+rankingModal.addEventListener('pointerdown', e=>{
+  if (e.target===rankingModal) closeRanking();
+});
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape' && !rankingModal.classList.contains('hidden')) closeRanking();
+});
 
 function updateHUD(){
   scoreEl.textContent=score;
