@@ -430,11 +430,12 @@
     <p class="lead">30秒、ひとつ残らず受け止めよ！</p>
     <div class="rule">
       👆 ドラッグ / ←→キーで長谷部をうごかす<br>
-      💗 三日月の投げるハートをキャッチ <b>+10</b><br>
-      🌙 たまに投げてくる月は <b>+30</b>！<br>
-      🔥 連続キャッチでコンボボーナス<br>
-      💧 とりこぼすとコンボが切れる…<br>
-      👤「たまに -100 になる驚きのものが…気をつけてくれ！」
+      💗 三日月の投げるハートをキャッチ <b>+50</b><br>
+      🌙 たまに投げてくる月は <b>+150</b>！<br>
+      🍡 おはぎを取ると <b>-250</b><br>
+      🔥 10コンボごとに <b>+100</b><br>
+      ✨ ぜんぶ受け取っておはぎを避けると <b>+400</b><br>
+      🏆 満点は <b>5000点</b>！
     </div>
     <div class="startBtnWrap">
       <button class="btn" id="startBtn">主命とあらば！</button>
@@ -615,7 +616,20 @@ let rushOhagiT=0;                        // 大盤振る舞い中のおはぎリ
 const OHAGI_PAUSE_MS=1800;
 const RUSH_OHAGI_FRAMES=28;              // 約0.45秒だけ専用絵を表示
 let score=0, best=0, combo=0, maxCombo=0;
+const MAX_FINAL_SCORE=5000;
+const HEART_POINTS=50;
+const MOON_POINTS=150;
+const OHAGI_PENALTY=250;
+const COMBO_BONUS_EVERY=10;
+const COMBO_BONUS=100;
+const PERFECT_BONUS=400;
+const TOTAL_HEARTS=50;
+const TOTAL_MOONS=10;
+const TOTAL_GOOD_ITEMS=TOTAL_HEARTS+TOTAL_MOONS;
+const TOTAL_OHAGI=6;
 let hearts=0, moons=0, missed=0, ohagiCount=0;
+let normalPlan=[], rushPlan=[];
+let normalSpawnIndex=0, rushSpawnIndex=0, rushStartElapsed=null;
 let items=[];                      // {x,y,vx,vy,type:'heart'|'moon'|'ohagi'}
 let fx=[];                         // スコアポップ
 let bubble=null;                   // 三日月のひとこと {text, life}
@@ -827,28 +841,64 @@ function hesiSay(text, life=90, pos='side'){ hesiBubble={text, life, pos}; }
 // ===== 投げる =====
 const MIKA_LINES = ['うけとれ', '受け取れ', 'なかなかやるな', 'よきかなよきかな', 'はっはっは', 'よいぞよいぞ', 'はいっ！'];
 const HESI_CATCH = ['だからぁ？', 'っ…ははっ'];
-function randomItemType(){
-  // おはぎは「たまに」。大盤振る舞い中も少しだけ混ざる。
-  const ohagiRate = rushOn ? 0.11 : 0.08;
-  const moonRate = rushOn ? 0.28 : 0.12;
-  const r = Math.random();
-  if (r < ohagiRate) return 'ohagi';
-  if (r < ohagiRate + moonRate) return 'moon';
-  return 'heart';
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
-function throwItem(){
-  const type = randomItemType();
+function buildPhaseEvents(rawEvents, startAt, endAt){
+  const events = shuffle(rawEvents.slice());
+  const count = events.length;
+  const step = (endAt-startAt) / Math.max(1, count-1);
+  return events.map((items, i)=>({
+    at: Number((startAt + step*i + (Math.random()*0.16-0.08)).toFixed(3)),
+    items
+  })).sort((a,b)=>a.at-b.at);
+}
+
+function buildSpawnPlans(){
+  const normalEvents = [];
+  const rushEvents = [];
+
+  // 通常時：ハート28、月5、おはぎ2
+  for(let i=0;i<16;i++) normalEvents.push(['heart']);
+  for(let i=0;i<3;i++) normalEvents.push(['moon']);
+  for(let i=0;i<4;i++) normalEvents.push(['heart','heart']);
+  for(let i=0;i<2;i++) normalEvents.push(['heart','moon']);
+  for(let i=0;i<2;i++) normalEvents.push(['heart','ohagi']);
+
+  // 大盤振る舞い：ハート22、月5、おはぎ4
+  for(let i=0;i<4;i++) rushEvents.push(['heart','heart']);
+  for(let i=0;i<4;i++) rushEvents.push(['heart','moon']);
+  for(let i=0;i<3;i++) rushEvents.push(['heart','heart']);
+  rushEvents.push(['moon']);
+  for(let i=0;i<4;i++) rushEvents.push(['heart','ohagi']);
+
+  return {
+    normal: buildPhaseEvents(normalEvents, 0.9, 19.4),
+    rush: buildPhaseEvents(rushEvents, 0.25, 5.2)
+  };
+}
+
+function spawnPlannedEvent(types){
+  if (!types || !types.length) return;
 
   // 左右の手を交互に使う。通常時はこの向きの差分を少しだけ表示。
   mikaThrowDir *= -1;
   mikaPoseT = 15;
 
+  const hasMoon = types.includes('moon');
+  const hasHeart = types.includes('heart');
+
   if (rushOn){
     if (Math.random()<0.35) say('はいっ！', 45);
-  } else if (type==='moon'){
+  } else if (hasMoon){
     say(Math.random()<0.5 ? 'これでどうだ' : 'これも受け取れ');
-  } else if (type==='heart' && Math.random()<0.3){
+  } else if (hasHeart && Math.random()<0.3){
     say(MIKA_LINES[Math.floor(Math.random()*MIKA_LINES.length)]);
   }
 
@@ -857,28 +907,37 @@ function throwItem(){
   const handY = MIKA_BASE_Y + mBob + MIKA_H * 0.56;
   const sideV = mikaThrowDir * (0.55 + Math.random()*0.55);
 
-  items.push({
-    x: handX - 10,
-    y: handY,
-    vx: sideV,
-    vy: 1.45,
-    type
+  types.forEach((type, idx)=>{
+    const offsetX = idx===0 ? -10 : (Math.random()*16 - 8);
+    const offsetY = idx===0 ? 0 : -5;
+    const vx = idx===0 ? sideV : (sideV * 0.75 + (Math.random()*0.5 - 0.25));
+    const vy = idx===0 ? 1.45 : 1.25;
+    items.push({
+      x: handX + offsetX,
+      y: handY + offsetY,
+      vx,
+      vy,
+      type
+    });
   });
 
-  // たまに2個いっぺんに
-  if (Math.random() < (rushOn?0.6:0.25)){
-    const t2 = randomItemType();
-    items.push({
-      x: handX + (Math.random()*16-8) - 10,
-      y: handY - 5,
-      vx: sideV * 0.75 + (Math.random()*0.5-0.25),
-      vy: 1.25,
-      type:t2
-    });
+  smileT=22;
+}
+
+function spawnScheduledItems(elapsed){
+  while (!rushOn && normalSpawnIndex < normalPlan.length && elapsed >= normalPlan[normalSpawnIndex].at){
+    spawnPlannedEvent(normalPlan[normalSpawnIndex].items);
+    normalSpawnIndex++;
   }
 
-  smileT=22;
-  throwIn = rushOn ? (10+Math.random()*8) : (30+Math.random()*20);
+  if (rushOn){
+    if (rushStartElapsed===null) rushStartElapsed = elapsed;
+    const rushElapsed = elapsed - rushStartElapsed;
+    while (rushSpawnIndex < rushPlan.length && rushElapsed >= rushPlan[rushSpawnIndex].at){
+      spawnPlannedEvent(rushPlan[rushSpawnIndex].items);
+      rushSpawnIndex++;
+    }
+  }
 }
 
 // ===== メインループ =====
@@ -973,7 +1032,7 @@ function loop(){
     rushBannerT--;
     if (rushBannerT===0){                 // 演出終了 → 怒涛スタート！
       rushOn=true; rushShown=true;
-      throwIn=4;
+      rushStartElapsed = null;
       hesiSay('はぁぁあ！', 72);          // 大盤振る舞い開始の気合い
     }
   }
@@ -989,8 +1048,8 @@ function loop(){
   mx += (mTarget-mx)*0.02;
   mBob = Math.sin(frame*0.05)*4;
 
-  throwIn--;
-  if (throwIn<=0 && timeLeft>0.5 && rushHold<=0 && rushBannerT<=0) throwItem();
+  const elapsed = GAME_TIME - timeLeft;
+  if (timeLeft>0.5 && rushHold<=0 && rushBannerT<=0) spawnScheduledItems(elapsed);
 
   // アイテム落下+キャッチ判定
   const cy0 = STAND_Y-HESI_H, cy1 = STAND_Y-HESI_H*0.42;   // 長谷部の上半身
@@ -1012,9 +1071,9 @@ function loop(){
       if (it.type==='ohagi'){
         combo=0;
         ohagiCount++;
-        score=Math.max(0, score-100);
+        score=Math.max(0, score-OHAGI_PENALTY);
         sound('miss');
-        fx.push({x:it.x, y:cy0-8, text:'-100',
+        fx.push({x:it.x, y:cy0-8, text:`-${OHAGI_PENALTY}`,
                  color:'#8a4c62', life:46});
 
         // 大盤振る舞い前：全体を止めて長いリアクション。
@@ -1035,9 +1094,10 @@ function loop(){
         }
       } else {
         combo++; maxCombo=Math.max(maxCombo,combo);
-        const bonus=Math.min(combo-1,5)*2;
-        const base=it.type==='moon'?30:10;
-        score+=base+bonus;
+        const base = it.type==='moon' ? MOON_POINTS : HEART_POINTS;
+        let gained = base;
+        if (combo % COMBO_BONUS_EVERY === 0) gained += COMBO_BONUS;
+        score += gained;
         if (it.type==='moon'){ moons++; sound('moon'); }
         else { hearts++; sound('heart'); }
         happyT=30;
@@ -1045,7 +1105,7 @@ function loop(){
           hesiCatchSaid=true;
           hesiSay(HESI_CATCH[Math.floor(Math.random()*HESI_CATCH.length)], 50, 'side');
         }
-        fx.push({x:it.x, y:cy0-8, text:`+${base+bonus}`,
+        fx.push({x:it.x, y:cy0-8, text:`+${gained}`,
                  color: it.type==='moon'?'#c9932b':'#e0508a', life:36});
       }
     }
@@ -1284,6 +1344,11 @@ function render(){
 // ===== 終了 =====
 function endGame(){
   playing=false;
+
+  const gotPerfect = hearts===TOTAL_HEARTS && moons===TOTAL_MOONS && missed===0 && ohagiCount===0 && maxCombo>=TOTAL_GOOD_ITEMS;
+  if (gotPerfect) score += PERFECT_BONUS;
+  score = Math.min(MAX_FINAL_SCORE, Math.round(score));
+
   if (score>best) best=score;
   sound('end');
   // 結果セリフはすべて公式ボイス原文のみ
@@ -1308,28 +1373,28 @@ function endGame(){
     'お任せください。最良の結果を、主に',
   ];
 
-  // 4段階評価
-  // 1) 200点未満、またはおはぎ5個以上 → LOW
-  // 2) 200～349点 → NORMAL
-  // 3) 350～449点 → GOOD
-  // 4) 450点以上 → BEST
+  // 4段階評価（5000点満点）
+  // 1) 2000点未満、またはおはぎ5個以上 → LOW
+  // 2) 2000～3499点 → NORMAL
+  // 3) 3500～4499点 → GOOD
+  // 4) 4500～5000点 → BEST
   let pool;
-  if (score < 200 || ohagiCount >= 5){
+  if (score < 2000 || ohagiCount >= 5){
     pool = LOW_RANK;
-  } else if (score >= 450){
+  } else if (score >= 4500){
     pool = BEST_RANK;
-  } else if (score >= 350){
+  } else if (score >= 3500){
     pool = GOOD_RANK;
   } else {
     pool = NORMAL_RANK;
   }
 
   const rank = '🍆「' + pool[Math.floor(Math.random()*pool.length)] + '」';
-  document.getElementById('resultScore').textContent = `${score} てん`;
+  document.getElementById('resultScore').textContent = `${score} / ${MAX_FINAL_SCORE} てん`;
 
-  const missText = missed ? `💧 とりこぼし×${missed}` : '✨ 完全受領';
+  const missText = gotPerfect ? `✨ 完全受領 +${PERFECT_BONUS}` : (missed ? `💧 とりこぼし×${missed}` : '✨ 全部受け止めた');
   document.getElementById('resultDetail').innerHTML =
-    `💗×${hearts} ／ 🌙×${moons}<br>` +
+    `💗×${hearts}/${TOTAL_HEARTS} ／ 🌙×${moons}/${TOTAL_MOONS}<br>` +
     `🔥 さいだい${maxCombo}コンボ ／ ${missText}<br>` +
     `<img src="ohagi.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:-4px;margin-right:3px;">おはぎ×${ohagiCount}`;
 
@@ -1351,6 +1416,8 @@ function endGame(){
 // ===== 開始 =====
 function startGame(){
   score=0; combo=0; maxCombo=0; hearts=0; moons=0; missed=0; ohagiCount=0;
+  ({normal: normalPlan, rush: rushPlan} = buildSpawnPlans());
+  normalSpawnIndex=0; rushSpawnIndex=0; rushStartElapsed=null;
   items=[]; fx=[]; bubble=null; hesiBubble=null;
   throwIn=40; rushOn=false; rushShown=false; rushCued=false; rushHold=0; rushBannerT=0;
   rushMikaSaid=false; introStage=1; introT=60; hesiCatchSaid=false;
