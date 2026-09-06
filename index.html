@@ -195,6 +195,14 @@
   }
 
 
+
+  .fanNoticeSub {
+    margin-top:4px;
+    font-size:10.5px;
+    line-height:1.55;
+    color:#8e7c73;
+  }
+
   /* ===== ランキング ===== */
   .rankLinkBtn {
     border:0;
@@ -366,6 +374,35 @@
     white-space:nowrap;
   }
 
+
+  /* ===== フッター / 二次創作表記 ===== */
+  .siteFooter {
+    margin-top:4px;
+    padding:12px 14px 4px;
+    text-align:center;
+    color:#8d7c73;
+    font-size:10.5px;
+    line-height:1.65;
+  }
+  .siteFooter p { margin:3px 0; }
+  .siteFooter a {
+    color:var(--murasaki);
+    font-weight:800;
+    text-decoration:none;
+  }
+  .siteFooter a:hover { text-decoration:underline; }
+  .siteFooter .fanNotice { color:#74655e; }
+  .siteFooter .rankingPolicy {
+    margin-top:7px;
+    padding-top:7px;
+    border-top:1px dashed #e7dbcf;
+    color:#9a7777;
+  }
+
+  /* マウスで押した後のランキングリンクの四角いフォーカス枠を出さない */
+  .rankLinkBtn:focus,
+  .rankLinkBtn:focus-visible { outline:none; box-shadow:none; }
+
   @media (max-width: 420px) {
     #game { padding:8px 8px 12px; gap:8px; }
     .badge { border-radius:18px; padding:5px 6px 6px; min-height:54px; }
@@ -418,6 +455,13 @@
       <button class="btn" id="retryBtn">まだ行けますよ</button>
     </div>
   </div>
+
+  <footer class="siteFooter">
+    <p class="fanNotice">本ページは『刀剣乱舞ONLINE』の非公式二次創作ファンゲームです。公式・関係各社とは一切関係ありません。</p>
+    <p>ゲーム制作・イラスト © 2026 阿蘇なゆた　<a href="https://x.com/heshimikachi" target="_blank" rel="noopener noreferrer">X：@heshimikachi</a></p>
+    <p class="fanNoticeSub">※リンク先には「へしみか」等の腐向け・BL二次創作を含みます。</p>
+    <p class="rankingPolicy">ランキングへの不適切な名前・なりすまし・個人情報を含む名前・迷惑行為を目的とした名前の登録は禁止します。該当する登録は管理者判断で予告なく削除する場合があります。</p>
+  </footer>
 
   <div id="rankingModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="rankingTitle">
     <div class="rankingCard">
