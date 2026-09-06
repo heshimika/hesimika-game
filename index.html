@@ -31,7 +31,7 @@
     padding-right: env(safe-area-inset-right, 0px);
   }
   #game {
-    width:min(430px,100vw);
+    width:min(430px, calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
     display:flex; flex-direction:column;
     padding:18px 10px 22px;
     gap:10px;
@@ -846,6 +846,7 @@ function hesiSay(text, life=90, pos='side'){ hesiBubble={text, life, pos}; }
 const MIKA_LINES = ['受け取れ', 'なかなかやるな', 'よきかなよきかな', 'あっはははは', 'いいぞいいぞ', 'やるか'];
 const MIKA_RUSH_PRE_LINES = ['暑いな…本気になるか', '一騎打ちとは古風だな', 'はははは、いや…笑ってる場合ではないな'];
 const MIKA_INTRO2_LINES = ['俺の負けでもいいんだが…', 'さて、給料分は仕事をするか', '出陣か、わかった', 'うむ、では参加するか'];
+const HESI_INTRO_LINES = ['主の命とあらば', '拝命いたしましょう'];
 const HESI_CATCH = ['だからぁ？', 'っ…ははっ'];
 
 function shuffle(arr){
@@ -949,10 +950,8 @@ function loop(){
   frame++;
 
   // ===== 開始演出 =====
-  // ① 約1秒静止 → ② 三日月「へしみか、はじめよう」
-  // → ③ 三日月「俺の負けでもいいんだが…」
-  // → ④ 長谷部「主の命とあらば」
-  // → ⑤ 長谷部「拝命いたしましょう」 → ⑥ ここで30秒タイマー開始
+  // ① 約1秒静止 → ② 三日月セリフ(4種からランダム)
+  // → ③ 長谷部セリフ(2種からランダム) → ここで30秒タイマー開始
   if (introStage>0){
     timeLeft=GAME_TIME;
 
@@ -964,23 +963,13 @@ function loop(){
     if (introStage===1 && introT<=0){
       introStage=2;
       introT=85;
-      say('へしみか、はじめよう', 85);
+      say(MIKA_INTRO2_LINES[Math.floor(Math.random()*MIKA_INTRO2_LINES.length)], 85);
     } else if (introStage===2 && introT<=0){
       bubble=null;
       introStage=3;
-      introT=85;
-      say(MIKA_INTRO2_LINES[Math.floor(Math.random()*MIKA_INTRO2_LINES.length)], 85);
+      introT=80;
+      hesiSay(HESI_INTRO_LINES[Math.floor(Math.random()*HESI_INTRO_LINES.length)], 80, 'top');
     } else if (introStage===3 && introT<=0){
-      bubble=null;
-      introStage=4;
-      introT=80;
-      hesiSay('主の命とあらば', 80, 'top');
-    } else if (introStage===4 && introT<=0){
-      hesiBubble=null;
-      introStage=5;
-      introT=80;
-      hesiSay('拝命いたしましょう', 80, 'top');
-    } else if (introStage===5 && introT<=0){
       hesiBubble=null;
       introStage=0;
       startTime=performance.now();
