@@ -136,6 +136,10 @@ const SPRITES = {
   hesi_right:      loadSprite('hesi_right.png'),
   hesi_rush_front: loadSprite('hesi_rush_front.png'),
   hesi_rush_back:  loadSprite('hesi_rush_back.png'),
+
+  // おはぎトラップ
+  ohagi:           loadSprite('ohagi.png'),
+  hesi_ohagi:      loadSprite('hesi_ohagi.png'),
 };
 
 // 512×512の透過PNGを、ゲーム内ではこの大きさで描画
@@ -219,9 +223,12 @@ let throwIn=50, rushOn=false, rushShown=false, rushCued=false, rushHold=0, rushB
 let rushMikaSaid=false;             // 大盤振る舞い前の三日月セリフを1回だけ
 let introStage=0, introT=0;              // 1:静止 2:三日月 3:長谷部 / 0:ゲーム本編
 let hesiCatchSaid=false;            // 大盤振る舞い前に長谷部のキャッチ台詞を最低1回
+let ohagiPauseUntil=0, ohagiPauseLast=0; // おはぎ誤キャッチ時の一時停止
+let rushOhagiT=0;                        // 大盤振る舞い中のおはぎ被弾リアクション
+const OHAGI_PAUSE_MS=1800;
 let score=0, best=0, combo=0, maxCombo=0;
 let hearts=0, moons=0, missed=0;
-let items=[];                      // {x,y,vx,vy,type:'heart'|'moon'}
+let items=[];                      // {x,y,vx,vy,type:'heart'|'moon'|'ohagi'}
 let fx=[];                         // スコアポップ
 let bubble=null;                   // 三日月のひとこと {text, life}
 let hesiBubble=null;               // 長谷部のひとこと {text, life}
@@ -249,9 +256,18 @@ function hesiSay(text, life=90, pos='side'){ hesiBubble={text, life, pos}; }
 // ===== 投げる =====
 const MIKA_LINES = ['うけとれ', '受け取れ', 'なかなかやるな', 'よきかなよきかな', 'はっはっは', 'よいぞよいぞ', 'はいっ！'];
 const HESI_CATCH = ['だからぁ？', 'っ…ははっ'];
-function throwItem(){
+function randomItemType(){
+  // おはぎは「たまに」。大盤振る舞い中も少しだけ混ざる。
+  const ohagiRate = rushOn ? 0.11 : 0.08;
   const moonRate = rushOn ? 0.28 : 0.12;
-  const type = Math.random() < moonRate ? 'moon' : 'heart';
+  const r = Math.random();
+  if (r < ohagiRate) return 'ohagi';
+  if (r < ohagiRate + moonRate) return 'moon';
+  return 'heart';
+}
+
+function throwItem(){
+  const type = randomItemType();
 
   // 左右の手を交互に使う。通常時はこの向きの差分を少しだけ表示。
   mikaThrowDir *= -1;
@@ -261,7 +277,7 @@ function throwItem(){
     if (Math.random()<0.35) say('はいっ！', 45);
   } else if (type==='moon'){
     say(Math.random()<0.5 ? 'これでどうだ' : 'これも受け取れ');
-  } else if (Math.random()<0.3){
+  } else if (type==='heart' && Math.random()<0.3){
     say(MIKA_LINES[Math.floor(Math.random()*MIKA_LINES.length)]);
   }
 
@@ -280,7 +296,7 @@ function throwItem(){
 
   // たまに2個いっぺんに
   if (Math.random() < (rushOn?0.6:0.25)){
-    const t2 = Math.random()<moonRate ? 'moon' : 'heart';
+    const t2 = randomItemType();
     items.push({
       x: handX + (Math.random()*16-8) - 10,
       y: handY - 5,
@@ -331,10 +347,32 @@ function loop(){
     return;
   }
 
+  // ===== おはぎ誤キャッチ演出 =====
+  // 大盤振る舞い前だけ、約1.8秒すべてを止めて長谷部に言わせる。
+  // 停止中はゲーム時間も減らさない。
+  if (ohagiPauseUntil>0){
+    const now=performance.now();
+    if (now < ohagiPauseUntil){
+      startTime += Math.max(0, now-ohagiPauseLast);
+      ohagiPauseLast=now;
+      timeLeft=Math.max(0, GAME_TIME-(now-startTime)/1000);
+      render();
+      updateHUD();
+      if (playing) rafId=requestAnimationFrame(loop);
+      return;
+    } else {
+      startTime += Math.max(0, ohagiPauseUntil-ohagiPauseLast);
+      ohagiPauseUntil=0;
+      ohagiPauseLast=0;
+      hesiBubble=null;
+    }
+  }
+
   timeLeft=Math.max(0, GAME_TIME-(performance.now()-startTime)/1000);
   if (happyT>0) happyT--;
   if (smileT>0) smileT--;
   if (mikaPoseT>0) mikaPoseT--;
+  if (rushOhagiT>0) rushOhagiT--;
   if (bubble && --bubble.life<=0) bubble=null;
   if (hesiBubble && --hesiBubble.life<=0) hesiBubble=null;
 
@@ -394,24 +432,59 @@ function loop(){
     }
     if (frozen) continue;              // タメ中は判定もしない(完全に静止)
     if (it.x<10||it.x>W-24) it.vx*=-1;                 // 端で跳ね返る
-    const cx=it.x+10, cyy=it.y+9;
+    const itemHalf = it.type==='ohagi' ? 14 : 10;
+    const cx=it.x+itemHalf, cyy=it.y+(it.type==='ohagi'?14:9);
     if (cyy>=cy0 && cyy<=cy1 && Math.abs(cx-hx)<CHAR_W/2+4){
       it.got=true;
-      combo++; maxCombo=Math.max(maxCombo,combo);
-      const bonus=Math.min(combo-1,5)*2;
-      const base=it.type==='moon'?30:10;
-      score+=base+bonus;
-      if (it.type==='moon'){ moons++; sound('moon'); }
-      else { hearts++; sound('heart'); }
-      happyT=30;
-      if (!rushCued && introStage===0 && (!hesiCatchSaid || Math.random()<0.18)){
-        hesiCatchSaid=true;
-        hesiSay(HESI_CATCH[Math.floor(Math.random()*HESI_CATCH.length)], 50, 'side');
+
+      // おはぎは減点トラップ。避ければノーペナルティ。
+      if (it.type==='ohagi'){
+        combo=0;
+        score=Math.max(0, score-100);
+        sound('miss');
+        fx.push({x:it.x, y:cy0-8, text:'-100',
+                 color:'#8a4c62', life:46});
+
+        // 大盤振る舞い「前」だけ、全体を一旦止めて長谷部がむせる。
+        if (!rushOn && !rushCued && introStage===0){
+          const now=performance.now();
+          ohagiPauseLast=now;
+          ohagiPauseUntil=now+OHAGI_PAUSE_MS;
+          bubble=null;
+          hesiBubble=null;
+          hesiSay('げほっげほっ！くそっ、おはぎか！', 9999, 'top');
+        }
+        // 大盤振る舞い中は止めないで、短い悲鳴だけ出す。
+        else if (rushOn){
+          rushOhagiT=20;
+          hesiBubble=null;
+          hesiSay(Math.random()<0.5 ? 'ぐはっ！' : 'うわっ！', 22, 'side');
+        }
+      } else {
+        combo++; maxCombo=Math.max(maxCombo,combo);
+        const bonus=Math.min(combo-1,5)*2;
+        const base=it.type==='moon'?30:10;
+        score+=base+bonus;
+        if (it.type==='moon'){ moons++; sound('moon'); }
+        else { hearts++; sound('heart'); }
+        happyT=30;
+        if (!rushCued && introStage===0 && (!hesiCatchSaid || Math.random()<0.18)){
+          hesiCatchSaid=true;
+          hesiSay(HESI_CATCH[Math.floor(Math.random()*HESI_CATCH.length)], 50, 'side');
+        }
+        fx.push({x:it.x, y:cy0-8, text:`+${base+bonus}`,
+                 color: it.type==='moon'?'#c9932b':'#e0508a', life:36});
       }
-      fx.push({x:it.x, y:cy0-8, text:`+${base+bonus}`,
-               color: it.type==='moon'?'#c9932b':'#e0508a', life:36});
     }
-    if (!it.got && it.y>H){ it.miss=true; missed++; combo=0; sound('miss'); }
+    if (!it.got && it.y>H){
+      it.miss=true;
+      // おはぎを避けるのは正解なので、miss扱いにしない
+      if (it.type!=='ohagi'){
+        missed++;
+        combo=0;
+        sound('miss');
+      }
+    }
   }
   items=items.filter(it=>!it.got && !it.miss);
   for (const f of fx){ f.y-=0.8; f.life--; }
@@ -484,7 +557,15 @@ function render(){
 
   // アイテム
   for (const it of items){
-    if (it.type==='moon'){
+    if (it.type==='ohagi'){
+      const oi=SPRITES.ohagi;
+      if (oi.complete && oi.naturalWidth){
+        ctx.drawImage(oi, it.x-2, it.y-2, 32, 32);
+      } else {
+        ctx.fillStyle='#744a59';
+        ctx.beginPath(); ctx.arc(it.x+14,it.y+14,12,0,Math.PI*2); ctx.fill();
+      }
+    } else if (it.type==='moon'){
       drawMap(MOON, it.x, it.y, SPR);
       if (frame%16<8){ ctx.fillStyle=PAL.W; ctx.fillRect(it.x+22, it.y+2, 3, 3); }
     } else {
@@ -497,7 +578,10 @@ function render(){
   // 大盤振る舞い中：汗だくの前向き絵を左右反転して使用
   let hesiImg = SPRITES.hesi_start;
   let hesiFlip = false;
-  if (rushOn){
+  if (ohagiPauseUntil>0 || rushOhagiT>0){
+    hesiImg = SPRITES.hesi_ohagi;
+    hesiFlip = rushOn && hesiMoveDir > 0;
+  } else if (rushOn){
     hesiImg = SPRITES.hesi_rush_front;
     hesiFlip = hesiMoveDir > 0;
   } else if (rushHold>0 || rushBannerT>0){
@@ -526,7 +610,7 @@ function render(){
     }
     ctx.restore();
   }
-  if (happyT>18){ ctx.font='14px sans-serif'; ctx.fillText('💗', hx+HESI_DRAW_W/2-4, STAND_Y-HESI_DRAW_H+5); }
+  if (happyT>18 && ohagiPauseUntil<=0 && rushOhagiT<=0){ ctx.font='14px sans-serif'; ctx.fillText('💗', hx+HESI_DRAW_W/2-4, STAND_Y-HESI_DRAW_H+5); }
 
   // 長谷部のふきだし：通常は横／「主への手土産ができたな」は頭上
   if (hesiBubble){
@@ -668,6 +752,7 @@ function startGame(){
   items=[]; fx=[]; bubble=null; hesiBubble=null;
   throwIn=40; rushOn=false; rushShown=false; rushCued=false; rushHold=0; rushBannerT=0;
   rushMikaSaid=false; introStage=1; introT=60; hesiCatchSaid=false;
+  ohagiPauseUntil=0; ohagiPauseLast=0; rushOhagiT=0;
   happyT=0; smileT=0; mikaPoseT=0; mikaThrowDir=1; hesiMoveDir=0; frame=0;
   hx=W/2; tx=W/2; mx=W/2; mTarget=W/2;
   startTime=0; timeLeft=GAME_TIME;
