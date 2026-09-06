@@ -3,13 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>みかづきさまのおくりもの 💗🌙</title>
+<title>🍆へしみか🌙ハートきゃっち💗</title>
 <style>
   :root {
     --murasaki: #532F73;
     --murasaki-deep: #3d2255;
-    --cream: #fbf8ee;
+    --cream: #fefcf6;
+    --panel: #fffaf2;
+    --white: #ffffff;
+    --line: #eee3d6;
+    --shadow: rgba(90,74,66,.14);
     --ink: #5a4a42;
+    --soft: #9a887b;
   }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { height:100%; }
@@ -20,88 +25,228 @@
     user-select:none; -webkit-user-select:none;
     min-height:100%; overflow-x:hidden;
   }
-  #game { width:min(440px,100vw); display:flex; flex-direction:column; padding:12px; gap:8px; position:relative; }
-
-  .hud { display:flex; justify-content:center; gap:10px; }
-  .badge {
-    background:#fff; border-radius:16px; padding:6px 14px;
-    font-weight:bold; font-size:15px; text-align:center;
-    box-shadow:0 3px 0 rgba(90,74,66,.15); min-width:92px;
+  #game {
+    width:min(430px,100vw);
+    display:flex; flex-direction:column;
+    padding:10px 10px 14px;
+    gap:10px;
+    position:relative;
   }
-  .badge small { display:block; font-size:10px; opacity:.6; font-weight:normal; }
-  #timeBadge.hurry { animation:hurryPulse .5s infinite alternate; color:#d9534f; }
-  @keyframes hurryPulse { from{transform:scale(1);} to{transform:scale(1.08);} }
 
-  #cvWrap { position:relative; border-radius:16px; overflow:hidden; box-shadow:0 5px 0 rgba(90,74,66,.15); }
-  #cv { display:block; width:100%; height:auto; max-height:70vh; object-fit:contain; touch-action:none; cursor:pointer; }
+  .hud {
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    align-items:stretch;
+  }
+  .badge {
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(180deg, #fffdf9 0%, #ffffff 100%);
+    border:2px solid var(--line);
+    border-radius:22px;
+    padding:6px 8px 7px;
+    min-width:0;
+    min-height:60px;
+    text-align:center;
+    box-shadow:0 4px 0 var(--shadow);
+  }
+  .badge::before {
+    content:"";
+    position:absolute;
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    right:-10px;
+    top:-10px;
+    background:rgba(255,255,255,.7);
+    pointer-events:none;
+  }
+  .badge::after {
+    content:"";
+    position:absolute;
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    left:8px;
+    bottom:6px;
+    background:rgba(255,255,255,.45);
+    pointer-events:none;
+  }
+  .scoreBadge { background:linear-gradient(180deg, #fff7fb 0%, #ffffff 100%); }
+  .timeBadge { background:linear-gradient(180deg, #fffaf2 0%, #ffffff 100%); }
+  .bestBadge { background:linear-gradient(180deg, #faf8ff 0%, #ffffff 100%); }
+  .badge small {
+    position:relative;
+    z-index:1;
+    display:block;
+    font-size:10px;
+    font-weight:800;
+    color:var(--soft);
+    letter-spacing:.05em;
+    line-height:1.1;
+    margin-bottom:2px;
+  }
+  .scoreBadge small { color:#d9779c; }
+  .timeBadge small { color:#af8a48; }
+  .bestBadge small { color:#8a6db4; }
+  .badge span {
+    position:relative;
+    z-index:1;
+    display:inline-block;
+    font-size:18px;
+    line-height:1.05;
+    font-weight:800;
+    letter-spacing:.01em;
+    color:var(--murasaki);
+    text-shadow:0 1px 0 rgba(255,255,255,.85);
+  }
+  #timeBadge { color:var(--ink); }
+  #timeBadge span { color:#6a4d2e; }
+  #timeBadge.hurry { animation:hurryPulse .5s infinite alternate; }
+  @keyframes hurryPulse { from{transform:scale(1);} to{transform:scale(1.04);} }
+
+  .panelCard {
+    background:rgba(255,250,242,.72);
+    border:1px solid #eadfce;
+    border-radius:22px;
+    box-shadow:0 4px 0 rgba(90,74,66,.10);
+    padding:14px 14px 16px;
+    backdrop-filter: blur(1px);
+  }
+  #startScreen {
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .titleBannerWrap {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:transparent;
+  }
+  .titleBanner {
+    display:block;
+    width:min(80%, 300px);
+    height:auto;
+  }
+  .lead {
+    text-align:center;
+    font-size:13px;
+    font-weight:800;
+    color:var(--murasaki);
+    line-height:1.35;
+  }
+  .rule {
+    background:var(--white);
+    border-radius:18px;
+    padding:11px 14px;
+    box-shadow:0 3px 0 rgba(90,74,66,.10);
+    font-size:12px;
+    line-height:1.7;
+    text-align:left;
+  }
+
+  #cvWrap {
+    position:relative;
+    border-radius:22px;
+    overflow:hidden;
+    box-shadow:0 5px 0 rgba(90,74,66,.15);
+    background:rgba(255,250,242,.45);
+  }
+  #cv { display:block; width:100%; height:auto; object-fit:contain; touch-action:none; cursor:pointer; }
+
+  .hidden { display:none !important; }
 
   .overlay {
-    position:absolute; inset:0; background:rgba(251,248,238,.93);
+    position:absolute; inset:0; background:rgba(254,252,246,.94);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:10px; text-align:center; padding:16px; z-index:10;
     overflow-y:auto; -webkit-overflow-scrolling:touch;
   }
-  .overlay.hidden { display:none; }
+  #resultOverlay { overflow:hidden; gap:8px; padding:12px 14px; }
   .overlay h1 { font-size:22px; color:var(--murasaki); line-height:1.3; }
   .overlay p { font-size:13px; line-height:1.7; }
-  .overlay .rule {
-    background:#fff; border-radius:14px; padding:10px 16px;
-    box-shadow:0 3px 0 rgba(90,74,66,.1);
-    font-size:12.5px; line-height:1.85; text-align:left;
-  }
   .btn {
-    font-family:inherit; font-size:17px; font-weight:bold; color:#fff;
+    font-family:inherit; font-size:17px; font-weight:800; color:#fff;
     background:var(--murasaki); border:none; border-radius:999px;
-    padding:12px 40px; cursor:pointer;
+    padding:12px 32px; cursor:pointer;
     box-shadow:0 5px 0 var(--murasaki-deep);
     transition:transform .08s, box-shadow .08s;
   }
   .btn:active { transform:translateY(4px); box-shadow:0 1px 0 var(--murasaki-deep); }
-  #resultScore { font-size:40px; font-weight:bold; color:var(--murasaki); }
-  #resultDetail { font-size:13px; opacity:.75; }
+  .startBtnWrap { display:flex; justify-content:center; padding-top:2px; }
+  .startBtnWrap .btn { min-width:210px; padding:11px 28px; }
+
+  #resultScore { font-size:24px; font-weight:800; color:var(--murasaki); line-height:1.1; }
+  #resultDetail {
+    font-size:12.5px; line-height:1.65; opacity:1;
+    background:#fff; border-radius:16px; padding:9px 12px;
+    box-shadow:0 3px 0 rgba(90,74,66,.10);
+    width:min(340px, 96%); color:#5a4a42;
+  }
   #resultBest { font-size:12px; opacity:.65; }
-  #resultRank { font-size:17px; font-weight:bold; }
-  .hint { font-size:11px; opacity:.55; text-align:center; }
+  #resultRank {
+    font-size:21px; font-weight:800; color:var(--murasaki);
+    line-height:1.45; letter-spacing:.02em;
+    text-shadow:0 1px 0 rgba(255,255,255,.85);
+    margin-top:-2px; margin-bottom:2px;
+  }
+
+  @media (max-width: 420px) {
+    #game { padding:8px 8px 12px; gap:8px; }
+    .badge { border-radius:18px; padding:5px 6px 6px; min-height:54px; }
+    .badge span { font-size:17px; }
+    .badge small { font-size:9.5px; }
+    .panelCard { padding:12px 12px 14px; }
+    .titleBanner { width:min(78%, 280px); }
+    .lead { font-size:12px; }
+    .rule { font-size:11.2px; padding:10px 12px; line-height:1.65; }
+  }
 </style>
 </head>
 <body>
 <div id="game">
-
   <div class="hud">
-    <div class="badge"><small>スコア</small><span id="score">0</span></div>
-    <div class="badge" id="timeBadge"><small>のこり</small><span id="time">30</span>秒</div>
-    <div class="badge"><small>ベスト</small><span id="best">0</span></div>
+    <div class="badge scoreBadge"><small>💗 スコア</small><span id="score">0</span></div>
+    <div class="badge timeBadge" id="timeBadge"><small>🌙 のこり</small><span id="time">30</span>秒</div>
+    <div class="badge bestBadge"><small>✨ ベスト</small><span id="best">0</span></div>
   </div>
 
-  <div id="cvWrap">
-    <canvas id="cv" width="400" height="300"></canvas>
-
-    <div class="overlay" id="startOverlay">
-      <p style="font-size:15px;font-weight:bold;color:#532F73;">30秒、ひとつ残らず受け止めよ！</p>
-      <div class="rule">
-        👆 ドラッグ / ←→キーで長谷部をうごかす<br>
-        💗 三日月の投げるハートをキャッチ <b>+10</b><br>
-        🌙 たまに投げてくる月は <b>+30</b>！<br>
-        🔥 連続キャッチでコンボボーナス<br>
-        💧 とりこぼすとコンボが切れる…
-      </div>
+  <section id="startScreen" class="panelCard">
+    <div class="titleBannerWrap">
+      <img class="titleBanner" src="title_banner.png" alt="🍆へしみか🌙　💗ハートきゃっち💗">
+    </div>
+    <p class="lead">30秒、ひとつ残らず受け止めよ！</p>
+    <div class="rule">
+      👆 ドラッグ / ←→キーで長谷部をうごかす<br>
+      💗 三日月の投げるハートをキャッチ <b>+10</b><br>
+      🌙 たまに投げてくる月は <b>+30</b>！<br>
+      🔥 連続キャッチでコンボボーナス<br>
+      💧 とりこぼすとコンボが切れる…<br>
+      👤「たまに -100 になる驚きのものが…気をつけてくれ！」
+    </div>
+    <div class="startBtnWrap">
       <button class="btn" id="startBtn">主命とあらば！</button>
     </div>
+  </section>
+
+  <div id="cvWrap" class="hidden">
+    <canvas id="cv" width="400" height="380"></canvas>
 
     <div class="overlay hidden" id="resultOverlay">
       <div id="resultScore">0</div>
       <div id="resultRank"></div>
       <div id="resultDetail"></div>
       <div id="resultBest"></div>
-      <p style="font-size:13px;color:#5a4a42;margin-top:4px;">もういちどやる？</p>
+      <p style="font-size:12px;color:#7a6b64;opacity:.75;margin-top:0px;">もういちどやる？</p>
       <button class="btn" id="retryBtn">まだ行けますよ</button>
     </div>
   </div>
-
-  <p class="hint">ドラッグ or ←→キーで長谷部をうごかす</p>
 </div>
 
 <script>
+
 /* =========================================================
    みかづきさまのおくりもの — へしみかキャッチ(趣味・非公開用)
    三日月が上からハートを投げ、長谷部がキャッチする30秒。外部PNG差分対応版。
@@ -206,7 +351,7 @@ function sound(kind) {
 const SPR = 3;
 const GAME_TIME = 30;
 const RUSH_AT = 9.5;               // 残り約9.5秒で長谷部→三日月の予告 → 演出後、ラスト約5〜6秒が大盤振る舞い
-const STAND_Y = 292;               // 長谷部の足の位置
+const STAND_Y = 350;               // 長谷部の足の位置
 const CHAR_W = 78;       // 長谷部の実キャラ部分の当たり幅
 
 // ===== 状態 =====
@@ -223,11 +368,12 @@ let throwIn=50, rushOn=false, rushShown=false, rushCued=false, rushHold=0, rushB
 let rushMikaSaid=false;             // 大盤振る舞い前の三日月セリフを1回だけ
 let introStage=0, introT=0;              // 1:静止 2:三日月 3:長谷部 / 0:ゲーム本編
 let hesiCatchSaid=false;            // 大盤振る舞い前に長谷部のキャッチ台詞を最低1回
-let ohagiPauseUntil=0, ohagiPauseLast=0; // おはぎ誤キャッチ時の一時停止
-let rushOhagiT=0;                        // 大盤振る舞い中のおはぎ被弾リアクション
+let ohagiPauseUntil=0, ohagiPauseLast=0; // 通常時のおはぎ誤キャッチ停止
+let rushOhagiT=0;                        // 大盤振る舞い中のおはぎリアクション
 const OHAGI_PAUSE_MS=1800;
+const RUSH_OHAGI_FRAMES=28;              // 約0.45秒だけ専用絵を表示
 let score=0, best=0, combo=0, maxCombo=0;
-let hearts=0, moons=0, missed=0;
+let hearts=0, moons=0, missed=0, ohagiCount=0;
 let items=[];                      // {x,y,vx,vy,type:'heart'|'moon'|'ohagi'}
 let fx=[];                         // スコアポップ
 let bubble=null;                   // 三日月のひとこと {text, life}
@@ -247,7 +393,7 @@ function updateHUD(){
 }
 
 // ===== 星空 =====
-const stars = Array.from({length:26},(_,i)=>({x:(i*67)%400, y:(i*41)%180, tw:i%3}));
+const stars = Array.from({length:26},(_,i)=>({x:(i*67)%400, y:(i*41)%230, tw:i%3}));
 
 // ===== 三日月のひとこと =====
 function say(text, life=100){ bubble={text, life}; }
@@ -440,12 +586,13 @@ function loop(){
       // おはぎは減点トラップ。避ければノーペナルティ。
       if (it.type==='ohagi'){
         combo=0;
+        ohagiCount++;
         score=Math.max(0, score-100);
         sound('miss');
         fx.push({x:it.x, y:cy0-8, text:'-100',
                  color:'#8a4c62', life:46});
 
-        // 大盤振る舞い「前」だけ、全体を一旦止めて長谷部がむせる。
+        // 大盤振る舞い前：全体を止めて長いリアクション。
         if (!rushOn && !rushCued && introStage===0){
           const now=performance.now();
           ohagiPauseLast=now;
@@ -454,11 +601,12 @@ function loop(){
           hesiBubble=null;
           hesiSay('げほっげほっ！くそっ、おはぎか！', 9999, 'top');
         }
-        // 大盤振る舞い中は止めないで、短い悲鳴だけ出す。
-        else if (rushOn){
-          rushOhagiT=20;
-          hesiBubble=null;
-          hesiSay(Math.random()<0.5 ? 'ぐはっ！' : 'うわっ！', 22, 'side');
+
+        // 大盤振る舞い中：止めない。専用絵＋短い悲鳴だけ。
+        if (rushOn){
+          rushOhagiT=RUSH_OHAGI_FRAMES;
+          const cries=['ぐはっ！','うわっ！'];
+          hesiSay(cries[Math.floor(Math.random()*cries.length)], RUSH_OHAGI_FRAMES, 'side');
         }
       } else {
         combo++; maxCombo=Math.max(maxCombo,combo);
@@ -527,7 +675,7 @@ function render(){
   if (mikaImg.complete && mikaImg.naturalWidth){
     const hop = smileT>16 ? -3 : 0;
     // 元PNGはそのまま。表示だけ少し大きく＋軽く締める
-    const drawY = 10+mBob+hop-(MIKA_DRAW_H-MIKA_H); // 雲の下端位置は従来と同じ
+    const drawY = 4+mBob+hop-(MIKA_DRAW_H-MIKA_H); // 雲の下端位置は従来と同じ
     ctx.save();
     ctx.filter='saturate(1.10) contrast(1.07)';
     ctx.shadowColor='rgba(8,12,28,.38)';
@@ -542,7 +690,7 @@ function render(){
     ctx.font='bold 15px sans-serif';
     const w=ctx.measureText(bubble.text).width+20;
     const bx=Math.min(W-w-6, Math.max(6, mx-w/2));
-    const by=10+MIKA_H+mBob-1;
+    const by=6+MIKA_H+mBob-1;
     ctx.globalAlpha=Math.min(1, bubble.life/15);
     // しっぽ(上向き)
     ctx.fillStyle='rgba(251,248,238,.96)';
@@ -580,7 +728,6 @@ function render(){
   let hesiFlip = false;
   if (ohagiPauseUntil>0 || rushOhagiT>0){
     hesiImg = SPRITES.hesi_ohagi;
-    hesiFlip = rushOn && hesiMoveDir > 0;
   } else if (rushOn){
     hesiImg = SPRITES.hesi_rush_front;
     hesiFlip = hesiMoveDir > 0;
@@ -662,7 +809,7 @@ function render(){
   if (combo>=2 && playing){
     ctx.font='bold 15px monospace';
     ctx.fillStyle='#f0d9a8';
-    ctx.fillText(`${combo} combo!💗`, W-118, 88);
+    ctx.fillText(`${combo} combo!💗`, W-118, 96);
   }
 
 
@@ -714,23 +861,53 @@ function endGame(){
   playing=false;
   if (score>best) best=score;
   sound('end');
-  const HIGH_RANK = [
-    'どうです？俺は強くなりましたよ',
+  // 結果セリフはすべて公式ボイス原文のみ
+  const LOW_RANK = [
+    'いえ……こんなはずでは……',
+    'これは練習です！',
+    '申し訳ございません……',
+    'これは何かの策ですか？',
+  ];
+  const NORMAL_RANK = [
+    '任務が達成されましたよ。ご確認を',
+    '完成致しました。お納めください',
+  ];
+  const GOOD_RANK = [
     '主命を果たしたまでのことです',
     '結果を出すのは当然です',
-    '最良の結果を主に',
+    '切れ味が冴えますね',
   ];
-  const MID_RANK = [
-    'お納めください',
-    '任務が達成されましたよ。ご確認を',
-    '手加減しろ、とは言われていなかったからなあ？',
-    '訓練といえど主が勝てというので',
+  const BEST_RANK = [
+    'どうです？　俺は強くなりましたよ',
+    '結果を出すのは当然です',
+    'お任せください。最良の結果を、主に',
   ];
-  const pool = score>=450 ? HIGH_RANK : score>=200 ? HIGH_RANK.concat(MID_RANK) : MID_RANK;
-  const rank = '🍆 ' + pool[Math.floor(Math.random()*pool.length)];
+
+  // 4段階評価
+  // 1) 200点未満、またはおはぎ5個以上 → LOW
+  // 2) 200～349点 → NORMAL
+  // 3) 350～449点 → GOOD
+  // 4) 450点以上 → BEST
+  let pool;
+  if (score < 200 || ohagiCount >= 5){
+    pool = LOW_RANK;
+  } else if (score >= 450){
+    pool = BEST_RANK;
+  } else if (score >= 350){
+    pool = GOOD_RANK;
+  } else {
+    pool = NORMAL_RANK;
+  }
+
+  const rank = '🍆「' + pool[Math.floor(Math.random()*pool.length)] + '」';
   document.getElementById('resultScore').textContent = `${score} てん`;
-  document.getElementById('resultDetail').textContent =
-    `💗×${hearts} ／ 🌙×${moons} ／ さいだい${maxCombo}コンボ` + (missed?` ／ とりこぼし×${missed}`:' ／ 完全受領✨');
+
+  const missText = missed ? `💧 とりこぼし×${missed}` : '✨ 完全受領';
+  document.getElementById('resultDetail').innerHTML =
+    `💗×${hearts} ／ 🌙×${moons}<br>` +
+    `🔥 さいだい${maxCombo}コンボ ／ ${missText}<br>` +
+    `<img src="ohagi.png" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:-4px;margin-right:3px;">おはぎ×${ohagiCount}`;
+
   document.getElementById('resultRank').textContent = rank;
   const BTN_LINES = [
     'まだ行けますよ。死ななきゃ安い',
@@ -748,7 +925,7 @@ function endGame(){
 
 // ===== 開始 =====
 function startGame(){
-  score=0; combo=0; maxCombo=0; hearts=0; moons=0; missed=0;
+  score=0; combo=0; maxCombo=0; hearts=0; moons=0; missed=0; ohagiCount=0;
   items=[]; fx=[]; bubble=null; hesiBubble=null;
   throwIn=40; rushOn=false; rushShown=false; rushCued=false; rushHold=0; rushBannerT=0;
   rushMikaSaid=false; introStage=1; introT=60; hesiCatchSaid=false;
@@ -757,7 +934,8 @@ function startGame(){
   hx=W/2; tx=W/2; mx=W/2; mTarget=W/2;
   startTime=0; timeLeft=GAME_TIME;
   playing=true;
-  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('cvWrap').classList.remove('hidden');
   document.getElementById('resultOverlay').classList.add('hidden');
   updateHUD();
   cancelAnimationFrame(rafId);
@@ -790,6 +968,7 @@ document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('retryBtn').addEventListener('click', startGame);
 
 render(); updateHUD();
+
 </script>
 </body>
 </html>
