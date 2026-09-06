@@ -490,6 +490,7 @@ const MIKA_W = 118, MIKA_H = 118;
 // 見た目だけ少し大きく（当たり判定・ゲームバランスは変更しない）
 const HESI_DRAW_W = 132, HESI_DRAW_H = 132;
 const MIKA_DRAW_W = 136, MIKA_DRAW_H = 136;
+const MIKA_BASE_Y = 18;            // 三日月を少し下げて頭切れを防ぐ
 
 // ===== アイテム =====
 const HEART = [
@@ -548,7 +549,7 @@ function sound(kind) {
 const SPR = 3;
 const GAME_TIME = 30;
 const RUSH_AT = 9.5;               // 残り約9.5秒で長谷部→三日月の予告 → 演出後、ラスト約5〜6秒が大盤振る舞い
-const STAND_Y = 350;               // 長谷部の足の位置
+const STAND_Y = 358;               // 長谷部の足の位置（芝を少し低くして表示域を確保）
 const CHAR_W = 78;       // 長谷部の実キャラ部分の当たり幅
 
 // ===== 状態 =====
@@ -809,7 +810,7 @@ function throwItem(){
 
   // 手元付近から落ち始める。左右のポーズに合わせて少し横へ飛ばす。
   const handX = mx + mikaThrowDir * 28;
-  const handY = 14 + mBob + MIKA_H * 0.56;
+  const handY = MIKA_BASE_Y + mBob + MIKA_H * 0.56;
   const sideV = mikaThrowDir * (0.55 + Math.random()*0.55);
 
   items.push({
@@ -1055,7 +1056,7 @@ function render(){
   if (mikaImg.complete && mikaImg.naturalWidth){
     const hop = smileT>16 ? -3 : 0;
     // 元PNGはそのまま。表示だけ少し大きく＋軽く締める
-    const drawY = 4+mBob+hop-(MIKA_DRAW_H-MIKA_H); // 雲の下端位置は従来と同じ
+    const drawY = MIKA_BASE_Y+mBob+hop-(MIKA_DRAW_H-MIKA_H); // 少し下げて頭切れを防ぐ
     ctx.save();
     ctx.filter='saturate(1.10) contrast(1.07)';
     ctx.shadowColor='rgba(8,12,28,.38)';
@@ -1070,7 +1071,7 @@ function render(){
     ctx.font='bold 15px sans-serif';
     const w=ctx.measureText(bubble.text).width+20;
     const bx=Math.min(W-w-6, Math.max(6, mx-w/2));
-    const by=6+MIKA_H+mBob-1;
+    const by=MIKA_BASE_Y+MIKA_H+mBob-1;
     ctx.globalAlpha=Math.min(1, bubble.life/15);
     // しっぽ(上向き)
     ctx.fillStyle='rgba(251,248,238,.96)';
