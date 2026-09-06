@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>🍆へしみか🌙ハートきゃっち💗</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🌙%3C/text%3E%3C/svg%3E">
+<title>へしみかハートきゃっち</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E💗%3C/text%3E%3C/svg%3E">
 <style>
   :root {
     --murasaki: #532F73;
@@ -1037,11 +1037,11 @@ function render(){
     if ((frame>>4)%3===s.tw) continue;   // またたき
     ctx.fillRect(s.x, s.y, 2, 2);
   }
-  // 縁側の床
-  ctx.fillStyle='#6b4a30'; ctx.fillRect(0, STAND_Y+2, W, H-STAND_Y);
-  ctx.fillStyle='#8a5e3c'; ctx.fillRect(0, STAND_Y-4, W, 6);
-  ctx.fillStyle='#7a5136';
-  for(let x=0;x<W;x+=57) ctx.fillRect(x, STAND_Y+2, 2, H-STAND_Y);
+  // 芝生
+  ctx.fillStyle='#5f9d4f'; ctx.fillRect(0, STAND_Y+2, W, H-STAND_Y);
+  ctx.fillStyle='#8cd06b'; ctx.fillRect(0, STAND_Y-4, W, 6);
+  ctx.fillStyle='#72b457';
+  for(let x=0;x<W;x+=44) ctx.fillRect(x, STAND_Y+2, 2, H-STAND_Y);
 
   // 三日月
   // 通常：待機 / 左投げ / 右投げ
