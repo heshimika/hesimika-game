@@ -1,0 +1,28 @@
+# へしみかランキング(Supabase)が無料プランの自動停止で止まらないように、
+# 週2回ランキングAPIにアクセスするだけのワークフローです。
+
+name: Keep Supabase alive
+
+on:
+  schedule:
+    # 毎週 月曜・木曜 12:00(日本時間)= 03:00 UTC
+    - cron: "0 3 * * 1,4"
+  workflow_dispatch: # Actions画面から手動でも実行できるように
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping leaderboard API
+        run: |
+          status=$(curl -s -o response.txt -w "%{http_code}" \
+            --retry 3 --retry-delay 10 --max-time 30 \
+            -H "apikey: sb_publishable_JliqWzWc5shbQidiaXrOrA_nKpKUKJ3" \
+            "https://ukuxypngootnncxwtgdg.supabase.co/functions/v1/leaderboard-api" || echo "000")
+          echo "HTTP status: $status"
+          head -c 300 response.txt 2>/dev/null || true
+          echo
+          if [ "$status" != "200" ]; then
+            echo "::error::ランキングAPIにつながりませんでした(HTTP $status)。Supabaseが停止していないか確認してください。"
+            exit 1
+          fi
